@@ -1,7 +1,7 @@
 Feature: Precondition Check XLSX
 
   Scenario: Verify if XLSX exist
-    Given the xlsx file "C:/SpringCucumberETL/src/main/resources/master.xlsx" exists
+    Given the xlsx file "src/main/resources/master.xlsx" exists
     Given the xlsx has data and is not an empty xlsx
 
 
