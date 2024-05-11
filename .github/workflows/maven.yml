@@ -32,10 +32,7 @@ jobs:
         run: docker-compose -f docker-compose.yml up -d postgredb
 
       - name: Wait for container to start
-        run: |
-          until docker inspect -f '{{ index .State.Health.Status 0 }}' postgres | grep -q 'healthy'; do
-          sleep 5
-          done
+        run: timeout 60s sh -c 'until docker ps | grep postgres | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
 
   build-and-test:
     runs-on: ubuntu-latest
