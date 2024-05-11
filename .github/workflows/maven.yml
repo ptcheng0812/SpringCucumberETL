@@ -23,18 +23,18 @@ jobs:
 
       - name: Set up secrets
         run: |
-          echo "POSTGRES_USER=${{ secrets.POSTGRES_USERNAME }}" >> $GITHUB_ENV
-          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> $GITHUB_ENV
-          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> $GITHUB_ENV
-          echo "POSTGRES_URL=${{ secrets.POSTGRES_URL }}" >> $GITHUB_ENV
+          echo "POSTGRES_USER=${{ secrets.POSTGRES_USERNAME }}" >> src/test/resources/application.properties
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> src/test/resources/application.properties
+          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> src/test/resources/application.properties
+          echo "POSTGRES_URL=${{ secrets.POSTGRES_URL }}" >> src/test/resources/application.properties
 
       - name: Build PostgreSQL Docker container
         run: docker-compose -f docker-compose.yml up -d postgredb
 
       - name: Wait for container to start
         run: |
-          until docker inspect -f '{{.State.Health.Status}}' postgres | grep -q 'healthy'; do
-            sleep 5
+          until docker inspect -f '{{ index .State.Health.Status 0 }}' postgres | grep -q 'healthy'; do
+          sleep 5
           done
 
   build-and-test:
@@ -49,7 +49,7 @@ jobs:
         cache: maven
         
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: mvn -B clean test --file pom.xml
 
     - name: Publish Cucumber HTML report
       uses: actions/upload-artifact@v2
