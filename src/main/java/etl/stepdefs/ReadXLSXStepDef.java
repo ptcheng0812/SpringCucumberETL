@@ -95,6 +95,7 @@ public class ReadXLSXStepDef {
                 Iterator < Cell >  itr_data_cells = datarow.cellIterator();
                 while ( itr_data_cells.hasNext()) {
                     String data = String.valueOf(itr_data_cells.next());
+                    if(data.endsWith(".0")) {data = data.substring(0, data.length() - 2); }
                     rowData.add(data);
                 }
                 Map<String, String> singleData = MethodHelper.convertToDictionary(headers, rowData);
@@ -135,6 +136,7 @@ public class ReadXLSXStepDef {
                 Iterator < Cell >  itr_data_cells = datarow.cellIterator();
                 while ( itr_data_cells.hasNext()) {
                     String data = String.valueOf(itr_data_cells.next());
+                    if(data.endsWith(".0")) {data = data.substring(0, data.length() - 2); }
                     rowData.add(data);
                 }
                 Map<String, String> singleData = MethodHelper.convertToDictionary(headers, rowData);
@@ -175,6 +177,7 @@ public class ReadXLSXStepDef {
                 Iterator < Cell >  itr_data_cells = datarow.cellIterator();
                 while ( itr_data_cells.hasNext()) {
                     String data = String.valueOf(itr_data_cells.next());
+                    if(data.endsWith(".0")) {data = data.substring(0, data.length() - 2); }
                     rowData.add(data);
                 }
                 Map<String, String> singleData = MethodHelper.convertToDictionary(headers, rowData);
@@ -211,6 +214,7 @@ public class ReadXLSXStepDef {
                 Iterator < Cell >  itr_data_cells = datarow.cellIterator();
                 while ( itr_data_cells.hasNext()) {
                     String data = String.valueOf(itr_data_cells.next());
+                    if(data.endsWith(".0")) {data = data.substring(0, data.length() - 2); }
                     rowData.add(data);
                 }
                 Map<String, String> singleData = MethodHelper.convertToDictionary(headers, rowData);

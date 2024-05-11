@@ -1,9 +1,6 @@
 package etl;
 
-import etl.data.APIData;
-import etl.data.ScenarioLevel;
-import etl.data.SheetData;
-import etl.data.FilePath;
+import etl.data.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScans;
 import org.springframework.context.annotation.Configuration;
@@ -38,5 +35,9 @@ public class Config {
     public ScenarioLevel getScenarioLevel() {
         return new ScenarioLevel();
     }
+
+    @Bean
+    @Scope(SCOPE_CUCUMBER_GLUE)
+    public SQL getSQL() {return new SQL();}
 
 }

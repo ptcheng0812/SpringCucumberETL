@@ -1,4 +1,5 @@
 Feature: Compare Tabular Data to XLSX file
+  Allow not matched
 
   Scenario: Check if Tabular Data exist and compare with xlsx file (non-deliberately)
     When I compare the following tabular data to sheet "Result1" in xlsx file "src/main/resources/master.xlsx"

@@ -15,10 +15,30 @@ on:
     branches: [ "master" ]
 
 jobs:
-  build:
-
+  build-postgres-container:
     runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
 
+      - name: Set up secrets
+        run: |
+          echo "POSTGRES_USER=${{ secrets.POSTGRES_USERNAME }}" >> $GITHUB_ENV
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> $GITHUB_ENV
+          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> $GITHUB_ENV
+          echo "POSTGRES_URL=${{ secrets.POSTGRES_URL }}" >> $GITHUB_ENV
+
+      - name: Build PostgreSQL Docker container
+        run: docker-compose -f docker-compose.yml up -d postgredb
+
+      - name: Wait for container to start
+        run: |
+          until docker inspect -f '{{.State.Health.Status}}' postgres | grep -q 'healthy'; do
+            sleep 5
+          done
+
+  build-and-test:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Set up JDK 17

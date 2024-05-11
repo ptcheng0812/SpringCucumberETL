@@ -29,12 +29,10 @@ public class WriteXLSXStepDef {
             ArrayNode arrayNode = apiData.dataNode;
             List<String> headers = new ArrayList<>();
             // Get the array of keys
-            JsonNode singleProductNode = arrayNode.get(0);
-            Iterator<String> itr = singleProductNode.fieldNames();
-            while(itr.hasNext()){
-                String key_field = itr.next();
-                headers.add(key_field);
-            }
+            JsonNode singleNodeH = arrayNode.get(0);
+            MethodHelper.JsonNodeExtractKeysRecursive(singleNodeH, headers, "");
+            System.out.println("headers" + headers);
+
             //Write headers in xlsx
             XSSFWorkbook workbook = new XSSFWorkbook();
             XSSFSheet sheet = workbook.createSheet("Result1");
@@ -51,7 +49,12 @@ public class WriteXLSXStepDef {
                 for (int h = 0; h < headers.size(); h++) {
                     JsonNode body = singleNode.get(headers.get(h));
                     Cell bodyCell = bodyRow.createCell(h);
-                    if (body.asText() != null) { bodyCell.setCellValue(body.asText());}
+                    if (body == null) {
+                        body = MethodHelper.findNodeWithValue(singleNode, headers.get(h));
+                        assert body != null;
+                        bodyCell.setCellValue(body.asText());
+                    }
+                    if(body.asText() != null && !body.isObject()) {bodyCell.setCellValue(body.asText());}
                     if(body.isArray()) {
                         String converted = MethodHelper.ConvertArrayNodeToCommaSeparatedString((ArrayNode) body);
                         bodyCell.setCellValue(converted);
@@ -84,12 +87,10 @@ public class WriteXLSXStepDef {
             ArrayNode arrayNode = apiData.dataNode;
             List<String> headers = new ArrayList<>();
             // Get the array of keys
-            JsonNode singleProductNode = arrayNode.get(0);
-            Iterator<String> itr = singleProductNode.fieldNames();
-            while(itr.hasNext()){
-                String key_field = itr.next();
-                headers.add(key_field);
-            }
+            JsonNode singleNodeH = arrayNode.get(0);
+            MethodHelper.JsonNodeExtractKeysRecursive(singleNodeH, headers, "");
+            System.out.println("headers" + headers);
+
             //Write headers in xlsx
             XSSFWorkbook workbook = new XSSFWorkbook();
             XSSFSheet sheet = workbook.createSheet(arg0);
@@ -106,7 +107,12 @@ public class WriteXLSXStepDef {
                 for (int h = 0; h < headers.size(); h++) {
                     JsonNode body = singleNode.get(headers.get(h));
                     Cell bodyCell = bodyRow.createCell(h);
-                    if (body.asText() != null) { bodyCell.setCellValue(body.asText());}
+                    if (body == null) {
+                        body = MethodHelper.findNodeWithValue(singleNode, headers.get(h));
+                        assert body != null;
+                        bodyCell.setCellValue(body.asText());
+                    }
+                    if(body.asText() != null && !body.isObject()) {bodyCell.setCellValue(body.asText());}
                     if(body.isArray()) {
                         String converted = MethodHelper.ConvertArrayNodeToCommaSeparatedString((ArrayNode) body);
                         bodyCell.setCellValue(converted);

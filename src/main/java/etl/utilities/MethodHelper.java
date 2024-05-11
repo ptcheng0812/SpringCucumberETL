@@ -6,11 +6,13 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import io.cucumber.datatable.DataTable;
 import io.restassured.response.Response;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,6 +29,39 @@ public class MethodHelper {
             }
         }
         return stringBuilder.toString();
+    }
+
+    public static JsonNode findNodeWithValue(JsonNode node, String value) {
+        Iterator<Map.Entry<String, JsonNode>> fieldsIterator = node.fields();
+        while (fieldsIterator.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fieldsIterator.next();
+            JsonNode fieldNode = entry.getValue();
+            if (fieldNode.isObject()) {
+                JsonNode foundNode = findNodeWithValue(fieldNode, value);
+                if (foundNode != null) {
+                    return foundNode;
+                }
+            } else if (entry.getKey().equals(value)) {
+                return fieldNode;
+            }
+        }
+        return null;
+    }
+    public static void JsonNodeExtractKeysRecursive(JsonNode jsonNode, List<String> pre_headers, String parentKey) {
+        Iterator<String> fieldNames = jsonNode.fieldNames();
+        while (fieldNames.hasNext()) {
+            String fieldName = fieldNames.next();
+            JsonNode fieldValue = jsonNode.get(fieldName);
+            if (fieldValue.isObject()) {
+                // If the value is a JSON object, recursively call extractKeysRecursive
+                JsonNodeExtractKeysRecursive(fieldValue, pre_headers, fieldName);
+                parentKey = fieldName;
+            } else {
+                // Add the key to headers with the appropriate prefix
+                if(fieldName != "") {pre_headers.add(fieldName);}
+                else { if (parentKey != null) {pre_headers.add(parentKey);} }
+            }
+        }
     }
 
     public static Map<String, String> convertToDictionary(List<String> columnNames, List<String> rowData) {
@@ -120,7 +155,6 @@ public class MethodHelper {
                 .collect(Collectors.toList());
     }
 
-
     public static ArrayNode GetAPIResponseAndTurnIntoNode(String apiEndPoint, String nodeName) {
         Response response = (Response) given().when().get(apiEndPoint).getBody();
         ArrayNode arrayNode = JsonNodeFactory.instance.arrayNode();
@@ -179,6 +213,242 @@ public class MethodHelper {
         map.values().forEach(value -> System.out.printf(" %-15s |", value));
         System.out.println(); // Newline after the data row
         return null;
+    }
+
+    /********************Database Helper*************************/
+    public static String generateCreateTableSql(String tableName, JsonNode node) {
+        StringBuilder sql = new StringBuilder("CREATE TABLE " + tableName + " (");
+        boolean lastCol = false;
+
+        // Check if the JSON node is null or empty
+        if (node == null || node.isNull() || node.isEmpty()) {
+            throw new IllegalArgumentException("JSON node is null or empty");
+        }
+        // Iterate through the fields of the first JSON object to determine the column names and data types
+
+        StringBuilder finalSql = sql;
+        node.fields().forEachRemaining(entry -> {
+            String fieldName = entry.getKey();
+            JsonNode fieldValue = entry.getValue();
+            String fieldType = "VARCHAR(400)"; // Adjust data types as needed
+            if(Objects.equals(fieldName, "id") || Objects.equals(fieldName, "num")) {
+                fieldType = "NUMERIC";
+                finalSql.append(fieldName).append(" ").append(fieldType).append(" NOT NULL, ");
+            } else{
+                finalSql.append(fieldName).append(" ").append(fieldType).append(", ");
+            }
+        });
+
+        sql = new StringBuilder(sql.substring(0, sql.length() - 2)); // Remove the last two characters
+
+        sql.append(")");
+
+        return sql.toString();
+    }
+
+    public static boolean tableExists(Connection connection, String tableName) throws SQLException {
+        try (Statement stmt = connection.createStatement();
+             ResultSet resultSet = stmt.executeQuery("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = '" + tableName + "')")) {
+            resultSet.next();
+            return resultSet.getBoolean(1);
+        }
+    }
+
+    public static void dropTable(Connection connection, String tableName) throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate("DROP TABLE " + tableName);
+        }
+    }
+
+    public static void insertDataToDatabase(Connection connection, JsonNode node, String nodeName) throws SQLException {
+        StringBuilder insertSql = new StringBuilder("INSERT INTO " + nodeName + " (");
+        StringBuilder valuesSql = new StringBuilder(") VALUES (");
+
+        // Iterate over the fields of the JSON object to dynamically construct the SQL statement
+        boolean firstField = true;
+        StringBuilder finalInsertSql = insertSql;
+        StringBuilder finalValuesSql = valuesSql;
+        node.fields().forEachRemaining(entry -> {
+            String fieldName = entry.getKey();
+            JsonNode fieldValue = entry.getValue();
+            String fieldValueStringtified = fieldValue.asText();
+            finalInsertSql.append(fieldName).append(", ");
+            if(Objects.equals(fieldName, "id")) { finalValuesSql.append(fieldValueStringtified).append(", "); }
+            else if(fieldValue.isArray()) { finalValuesSql.append("'").append(ConvertArrayNodeToCommaSeparatedString((ArrayNode) fieldValue)).append("'").append(", "); }
+            else if(fieldValue.isObject()) { finalValuesSql.append("'").append(fieldValue.get("").asText().replace("'", "''")).append("'").append(", ");}
+            else { finalValuesSql.append("'").append(fieldValueStringtified.replace("'", "''")).append("'").append(", ");}
+        });
+        insertSql = new StringBuilder(insertSql.substring(0, insertSql.length() - 2));
+        valuesSql = new StringBuilder(valuesSql.substring(0, valuesSql.length() - 2));
+        insertSql.append(valuesSql).append(")");
+
+        try (PreparedStatement statement = connection.prepareStatement(insertSql.toString())) {
+          statement.executeUpdate();
+        }
+    }
+
+    public static void queryDataInDatabase(Connection connection, Map<String, String> singleData, String table) throws SQLException {
+        StringBuilder query = new StringBuilder("SELECT * FROM " + table + " WHERE ");
+
+        for (Map.Entry<String, String> entry : singleData.entrySet()) {
+            query.append(entry.getKey()).append(" = ").append("'").append(entry.getValue()).append("'").append(" AND ");
+        }
+        // Remove the last "AND"
+        query.delete(query.length() - 5, query.length());
+
+        try (PreparedStatement statement = connection.prepareStatement(query.toString())) {
+            // Execute the query
+            ResultSet resultSet = statement.executeQuery();
+
+            // Assert that at least one result is returned
+            if (!resultSet.next())  {
+                System.out.print("Expected but not found in query: ");
+                System.out.print("|");
+                for(String key : singleData.keySet()) {
+                   System.out.printf(" %-15s |", singleData.get(key));
+
+                }
+                System.out.println();
+            }
+        }
+    }
+
+    public static boolean queryDataInDatabaseAndReturnMismatched(Connection connection, Map<String, String> singleData, String table) throws SQLException {
+        boolean matched = false;
+        StringBuilder query = new StringBuilder("SELECT * FROM " + table + " WHERE ");
+
+        for (Map.Entry<String, String> entry : singleData.entrySet()) {
+            String entryValue = entry.getValue();
+            if (entryValue.endsWith(".0")) { entryValue = entryValue.substring(0, entryValue.length() - 2);}
+            query.append(entry.getKey()).append(" = ").append("'").append(entryValue.replace("'", "''")).append("'").append(" AND ");
+        }
+        // Remove the last "AND"
+        query.delete(query.length() - 5, query.length());
+
+        try (PreparedStatement statement = connection.prepareStatement(query.toString())) {
+            // Execute the query
+            ResultSet resultSet = statement.executeQuery();
+
+            // Assert that at least one result is returned
+            if (resultSet.next()) {
+                return matched = true;
+            } else {
+                return matched = false;
+            }
+        }
+    }
+
+    public static void queryDataInDatabaseUsingEachKey(Connection connection, Map<String, String> singleData, String table) throws SQLException {
+        List<String> notMatchedKeys = new ArrayList<>();
+        for(String key : singleData.keySet()) {
+            StringBuilder query = new StringBuilder("SELECT * FROM " + table + " WHERE ");
+            query.append(key).append(" = ").append("'").append(singleData.get(key)).append("'");
+
+            try (PreparedStatement statement = connection.prepareStatement(query.toString())) {
+                // Execute the query
+                ResultSet resultSet = statement.executeQuery();
+                // Assert that at least one result is returned
+                if (!resultSet.next()) {
+                    System.out.println("At least one result found.");
+                    notMatchedKeys.add(key);
+                }
+            }
+        }
+
+        if(!notMatchedKeys.isEmpty()) {
+            System.out.print("Expected but not found in query: ");
+            System.out.print("|");
+            for(String key : singleData.keySet()) {
+                System.out.printf(" %-15s |", singleData.get(key));
+            }
+            System.out.println();
+            System.out.print("Not matched key and value: ");
+            for(String notMatchedKey : notMatchedKeys) {
+                System.out.printf(notMatchedKey + " : " + singleData.get(notMatchedKey) + ", ");
+            }
+            System.out.println();
+        }
+
+    }
+
+    public static List<String> getDBTableHeaders(Connection connection, String tableName) {
+        List<String> headers = new ArrayList<>();
+        try(PreparedStatement statement = connection.prepareStatement("SELECT * FROM " + tableName + " WHERE 1 = 0")) {
+            ResultSet resultSet = statement.executeQuery();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
+
+            for (int i = 1; i <= columnCount; i++) {
+                String columnName = metaData.getColumnName(i);
+                headers.add(columnName.toLowerCase());
+            }
+        }
+         catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return headers;
+    }
+
+    public static List<Map<String, String>> getAllDataFromTable(Connection connection, String tableName) {
+        List<Map<String, String>> dataList = new ArrayList<>();
+
+        try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM " + tableName)) {
+            ResultSet resultSet = statement.executeQuery();
+
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
+
+            while (resultSet.next()) {
+                Map<String, String> row = new HashMap<>();
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnName(i).toLowerCase();
+                    String columnValue = resultSet.getString(i);
+                    row.put(columnName, columnValue);
+                }
+                dataList.add(row);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return dataList;
+    }
+
+    public static String buildQueryFromTable(DataTable dataTable) {
+        List<List<String>> rows = dataTable.asLists();
+        StringBuilder queryBuilder = new StringBuilder();
+        // Iterate over each row in the table
+        for (List<String> row : rows) {
+            // Ensure the row has at least one cell
+            if (!row.isEmpty()) {
+                // Get the first cell value as SQL query
+                String sqlQuery = row.get(0);
+                // Append the SQL query to the query builder
+                queryBuilder.append(sqlQuery).append(" ");
+            }
+        }
+        // Convert the query builder to a string and return
+        return queryBuilder.toString().trim();
+    }
+
+    public static List<Map<String, String>> convertResultSetToList(ResultSet resultSet) throws SQLException {
+        List<Map<String, String>> dataList = new ArrayList<>();
+
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        int columnCount = metaData.getColumnCount();
+
+        while (resultSet.next()) {
+            Map<String, String> row = new HashMap<>();
+            for (int i = 1; i <= columnCount; i++) {
+                String columnName = metaData.getColumnName(i);
+                String columnValue = resultSet.getString(i);
+                row.put(columnName, columnValue);
+            }
+            dataList.add(row);
+        }
+
+        return dataList;
     }
 
 }

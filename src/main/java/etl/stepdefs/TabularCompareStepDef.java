@@ -1,5 +1,7 @@
 package etl.stepdefs;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import etl.data.SheetData;
 import etl.utilities.MethodHelper;
 import io.cucumber.datatable.DataTable;
@@ -10,25 +12,38 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.Assert;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static etl.utilities.MethodHelper.*;
+import static etl.utilities.MethodHelper.insertDataToDatabase;
+
 public class TabularCompareStepDef {
+    @Value("${spring.datasource.url}")
+    String url;
+    @Value("${spring.datasource.username}")
+    String user;
+    @Value("${spring.datasource.password}")
+    String password;
     @Autowired
     SheetData sheetData;
 
     private void internalLoggingGherkinTableFromMap(int index, String key, Map<String, String> target_master_map, List<Map<String, String>> tabularData) {
-        System.out.print("Expected: ");System.out.println();
+        System.out.print("Actual: ");System.out.println();
         System.out.print("|"); System.out.printf(" %-15s |", key);
         System.out.println();
         System.out.print("|"); System.out.printf(" %-15s |", target_master_map.get(key));
         System.out.println();
-        System.out.println("Actual: ");
+        System.out.println("Expected: ");
         System.out.print("|"); System.out.printf(" %-15s |", key);
         System.out.println();
         System.out.print("|"); System.out.printf(" %-15s |", tabularData.get(index).get(key));
@@ -39,8 +54,6 @@ public class TabularCompareStepDef {
     public void iCompareTheFollowingTabularDataToSheetInXlsxFile(String arg0, String arg1, DataTable table) throws IOException {
         //Tabular data
         List<Map<String, String>> tabularData = table.asMaps();
-//        System.out.println("tabularData: " + tabularData);
-
 
         //Master map data list
         FileInputStream inputStream = new FileInputStream(new File(arg1));
@@ -113,8 +126,6 @@ public class TabularCompareStepDef {
     public void iCompareTheFollowingTabularDataToSheetInXlsxFileWithUniqueKey(String arg0, String arg1, String arg2, DataTable table) throws IOException {
         //Tabular data
         List<Map<String, String>> tabularData = table.asMaps();
-//        System.out.println("tabularData: " + tabularData);
-
 
         //Master map data list
         FileInputStream inputStream = new FileInputStream(new File(arg1));
@@ -190,5 +201,55 @@ public class TabularCompareStepDef {
 
         if(notMatchedMaps.isEmpty()) { System.out.println("All comparison completed with no difference.");}
 //        else {System.out.println("Not Matched Maps: " + notMatchedMaps);}
+    }
+
+    @When("I compare the following tabular data to table {string} in database")
+    public void iCompareTheFollowingTabularDataToTableInDatabase(String arg0,  DataTable table) {
+        //Tabular data
+        List<Map<String, String>> tabularData = table.asMaps();
+
+        try {
+            Class.forName("org.postgresql.Driver");
+            // Establish database connection
+            try (Connection connection = DriverManager.getConnection(url, user, password)) {
+                System.out.println("Database connected successfully");
+
+                // Check if the table exists
+                if (tableExists(connection, arg0)) {
+                    System.out.println("Table exists.");
+                }
+
+                for (Map<String, String> singleData : tabularData) {
+                    queryDataInDatabase(connection, singleData, arg0);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @When("I compare the following tabular data to table {string} in database by each key")
+    public void iCompareTheFollowingTabularDataToTableInDatabaseByEachKey(String arg0, DataTable table) {
+        //Tabular data
+        List<Map<String, String>> tabularData = table.asMaps();
+
+        try {
+            Class.forName("org.postgresql.Driver");
+            // Establish database connection
+            try (Connection connection = DriverManager.getConnection(url, user, password)) {
+                System.out.println("Database connected successfully");
+
+                // Check if the table exists
+                if (tableExists(connection, arg0)) {
+                    System.out.println("Table exists.");
+                }
+
+                for (Map<String, String> singleData : tabularData) {
+                    queryDataInDatabaseUsingEachKey(connection, singleData, arg0);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
