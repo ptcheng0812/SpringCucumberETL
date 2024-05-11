@@ -29,7 +29,7 @@ jobs:
           echo "POSTGRES_URL=${{ secrets.POSTGRES_URL }}" >> src/test/resources/application.properties
 
       - name: Build PostgreSQL Docker container
-        run: docker-compose -f docker-compose.yml up -d postgredb
+        run: docker-compose -f docker-compose.yml up 
 
       - name: Wait for container to start
         run: |
