@@ -23,7 +23,7 @@ jobs:
 
       - name: Set up secrets
         run: |
-          echo "POSTGRES_USER=${{ secrets.POSTGRES_USERNAME }}" >> $GITHUB_ENV
+          echo "POSTGRES_USERNAME=${{ secrets.POSTGRES_USERNAME }}" >> $GITHUB_ENV
           echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> $GITHUB_ENV
           echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> $GITHUB_ENV
           echo "POSTGRES_URL=${{ secrets.POSTGRES_URL }}" >> $GITHUB_ENV
