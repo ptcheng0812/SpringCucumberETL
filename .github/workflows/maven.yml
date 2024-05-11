@@ -23,13 +23,13 @@ jobs:
 
       - name: Set up secrets
         run: |
-          echo "POSTGRES_USER=${{ secrets.POSTGRES_USERNAME }}" >> src/test/resources/application.properties
-          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> src/test/resources/application.properties
-          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> src/test/resources/application.properties
-          echo "POSTGRES_URL=${{ secrets.POSTGRES_URL }}" >> src/test/resources/application.properties
+          echo "POSTGRES_USER=${{ secrets.POSTGRES_USERNAME }}" >> $GITHUB_ENV
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> $GITHUB_ENV
+          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> $GITHUB_ENV
+          echo "POSTGRES_URL=${{ secrets.POSTGRES_URL }}" >> $GITHUB_ENV
 
       - name: Build PostgreSQL Docker container
-        run: docker-compose -f docker-compose.yml up 
+        run: docker-compose -f docker-compose.yml up -d postgredb
 
       - name: Wait for container to start
         run: |
@@ -39,6 +39,7 @@ jobs:
 
   build-and-test:
     runs-on: ubuntu-latest
+    needs: build-postgres-container
     steps:
     - uses: actions/checkout@v3
     - name: Set up JDK 17
