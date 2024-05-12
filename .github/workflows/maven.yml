@@ -43,7 +43,7 @@ jobs:
 
       - name: Verify DB Connection
         run: |
-          PGPASSWORD='postgres' docker run --rm postgres:latest psql "postgresql://postgres:postgres@172.17.0.1:5432/postgres_db" -c "SELECT 1"
+          PGPASSWORD='${POSTGRES_DB}' docker run --rm postgres:latest psql "postgresql://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@172.17.0.1:5432/${POSTGRES_DB}" -c "SELECT 1"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
