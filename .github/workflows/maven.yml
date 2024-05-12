@@ -29,7 +29,13 @@ jobs:
           echo "POSTGRES_URL=${{ secrets.POSTGRES_URL }}" >> $GITHUB_ENV
 
       - name: Build PostgreSQL Docker container
-        run: docker-compose -f docker-compose.yml up
+        run: docker-compose -f docker-compose.yml up -d
+
+      - name: Check running containers
+        run: docker ps -a
+
+      - name: Check logs
+        run: docker logs backend
 
       - name: Sleep for 100 seconds
         run: sleep 100s
