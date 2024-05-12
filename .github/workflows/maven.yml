@@ -42,7 +42,8 @@ jobs:
         shell: bash
 
       - name: Verify DB Connection
-        run: echo 'postgres' | docker run --rm postgres:latest psql -h 172.17.0.1 -p 5432 -U postgres -d postgres_db -w -c "SELECT 1"
+        run: |
+          PGPASSWORD='postgres' docker run --rm postgres:latest psql -h 172.17.0.1 -p 5432 -U postgres -d postgres_db -c "SELECT 1"
 
 
   build-and-test:
