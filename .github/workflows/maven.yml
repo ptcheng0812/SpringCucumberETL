@@ -42,7 +42,7 @@ jobs:
         shell: bash
 
       - name: Verify DB Connection
-        run: docker run --rm postgres:latest psql -h 172.17.0.1 -p 5432 -U postgres -d postgres_db -c "SELECT 1" <<< 'postgres'
+        run: echo 'postgres' | docker run --rm ***:latest psql -h 172.17.0.1 -p 5432 -U *** -d *** -w -c "SELECT 1"
 
   build-and-test:
     runs-on: ubuntu-latest
