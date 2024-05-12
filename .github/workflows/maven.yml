@@ -37,12 +37,12 @@ jobs:
       - name: Check logs
         run: docker logs postgres
 
-      - name: Sleep for 100 seconds
-        run: sleep 100s
+      - name: Sleep for 30 seconds
+        run: sleep 30s
         shell: bash
 
       - name: Verify DB Connection
-        run: docker run --rm postgres:latest psql -h postgres -U $POSTGRES_USERNAME -d $POSTGRES_DB -c "SELECT 1"
+        run: docker run --rm postgres:latest psql -h postgres -U postgres -d postgres_db -c "SELECT 1"
 
   build-and-test:
     runs-on: ubuntu-latest
