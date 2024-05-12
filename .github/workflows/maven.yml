@@ -42,8 +42,7 @@ jobs:
         shell: bash
 
       - name: Verify DB Connection
-        run: |
-          docker run --rm postgres:latest psql -h postgres -U $POSTGRES_USERNAME -d $POSTGRES_DB -c "SELECT 1"
+        run: docker run --rm postgres:latest psql -h postgres -U $POSTGRES_USERNAME -d $POSTGRES_DB -c "SELECT 1"
 
   build-and-test:
     runs-on: ubuntu-latest
