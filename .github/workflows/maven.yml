@@ -35,7 +35,7 @@ jobs:
         run: docker ps -a
 
       - name: Check logs
-        run: docker logs backend
+        run: docker logs postgres
 
       - name: Sleep for 100 seconds
         run: sleep 100s
