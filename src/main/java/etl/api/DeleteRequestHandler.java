@@ -1,10 +1,6 @@
 package etl.api;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import etl.utilities.MethodHelper;
 import io.restassured.RestAssured;
 import io.restassured.http.Headers;
@@ -12,19 +8,15 @@ import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
-public class GetRequestHandler implements IRequest {
+public class DeleteRequestHandler implements IRequest{
     private String apiEndpoint;
     private Map<String, String> _header;
     private Map<String, String> _param;
     private Secret _secret;
 
-    public GetRequestHandler(String apiEndpoint, Map<String, String> header, Map<String, String> param, Secret secret) {
+    public DeleteRequestHandler(String apiEndpoint, Map<String, String> header, Map<String, String> param, Secret secret) {
         this.apiEndpoint = apiEndpoint;
         this._header = header;
         this._param = param;
@@ -69,8 +61,8 @@ public class GetRequestHandler implements IRequest {
                     throw new IllegalArgumentException("Unsupported authentication method: " + _secret.getTypeOfAuth());
             }
         }
-        // Send the GET request
-        return request.get();
+        // Send the DELETE request
+        return request.delete();
     }
 
     @Override

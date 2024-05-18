@@ -121,6 +121,9 @@ public class MethodHelper {
     public static String concatenateWithStringJoin(List<String> stringList) {
         return String.join(", ", stringList);
     }
+    public static List<String> getKeysAsList(Map<String, String> map) {
+        return new ArrayList<>(map.keySet());
+    }
     public static List<String> GetHeaderAndReturnToHeaderList(XSSFSheet spreadsheet) {
         List<String> headers = new ArrayList<>();
         Row headerRow = spreadsheet.getRow(0);
@@ -170,6 +173,16 @@ public class MethodHelper {
                         .map(Map.Entry::getValue)
                         .collect(Collectors.toList()))
                 .collect(Collectors.toList());
+    }
+    public static String CheckEndsWithZeroStringConvert(String originalString) {
+        // Check if the original string ends with ".0"
+        if (originalString.endsWith(".0")) {
+            // Remove the ".0" part
+            return originalString.substring(0, originalString.length() - 2);
+        } else {
+            // If it doesn't end with ".0", return the original string
+            return originalString;
+        }
     }
     public static String printMapInGherkinStyle(Map<String, String> map) {
         // Print the table header dynamically

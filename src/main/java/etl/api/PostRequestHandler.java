@@ -40,29 +40,31 @@ public class PostRequestHandler implements IRequest{
         }
 
         // Determine authentication method based on Secret
-        switch (_secret.getTypeOfAuth()) {
-            case "Basic":
-                request.auth().basic(_secret.getBasicUsername(), _secret.getBasicPassword());
-                break;
-            case "OAuth1":
-                request.auth().oauth(
-                        _secret.getOAuth1ConsumerKey(),
-                        _secret.getOAuth1ConsumerSecret(),
-                        _secret.getOAuth1Token(),
-                        _secret.getOAuth1TokenSecret()
-                );
-                break;
-            case "OAuth2":
-                request.auth().oauth2(_secret.getOAuth2Token());
-                break;
-            case "JWT":
-                request.header("Authorization", "Bearer " + _secret.getJwtToken());
-                break;
-            case "":
-                break;
-            default:
-                // Handle other authentication methods or throw an exception for unsupported methods
-                throw new IllegalArgumentException("Unsupported authentication method: " + _secret.getTypeOfAuth());
+        if(_secret.getTypeOfAuth() != null && !_secret.getTypeOfAuth().isEmpty()) {
+            switch (_secret.getTypeOfAuth()) {
+                case "Basic":
+                    request.auth().basic(_secret.getBasicUsername(), _secret.getBasicPassword());
+                    break;
+                case "OAuth1":
+                    request.auth().oauth(
+                            _secret.getOAuth1ConsumerKey(),
+                            _secret.getOAuth1ConsumerSecret(),
+                            _secret.getOAuth1Token(),
+                            _secret.getOAuth1TokenSecret()
+                    );
+                    break;
+                case "OAuth2":
+                    request.auth().oauth2(_secret.getOAuth2Token());
+                    break;
+                case "JWT":
+                    request.header("Authorization", "Bearer " + _secret.getJwtToken());
+                    break;
+                case "":
+                    break;
+                default:
+                    // Handle other authentication methods or throw an exception for unsupported methods
+                    throw new IllegalArgumentException("Unsupported authentication method: " + _secret.getTypeOfAuth());
+            }
         }
 
         //Logic for body

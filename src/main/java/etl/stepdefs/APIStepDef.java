@@ -2,6 +2,8 @@ package etl.stepdefs;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import etl.api.GetRequestHandler;
+import etl.api.PostRequestHandler;
+import etl.api.PutRequestHandler;
 import etl.api.Secret;
 import etl.data.APIData;
 import etl.utilities.MethodHelper;
@@ -94,25 +96,41 @@ public class APIStepDef {
         }
         // Build the Secret object
         Secret secret = secretBuilder.build();
-        // Print the populated Secret object
-//        System.out.print(secret.getTypeOfAuth());
-//        System.out.print(secret.getJwtToken());
-//        System.out.print(headers);
-//        System.out.print(params);
 
         switch (arg0){
             case "GET":
                 GetRequestHandler getRequestHandler = new GetRequestHandler(apiData.endpoint, headers, params, secret);
                 Response response = getRequestHandler.extractResponseContent();
                 ArrayNode arrayNode = getRequestHandler.extractJSONArrayData(apiData.node);
-//                System.out.println(response.body().prettyPrint());
-                System.out.println("arr: " + arrayNode);
                 if(!arrayNode.isEmpty()) {
                     apiData.setDataNode(arrayNode);
+                    System.out.println("arr: " + apiData.dataNode);
                 } else {
-                    Assert.fail("This node from response data is empty. Please ensure a valid response return");
+                    Assert.fail("This node from Get response data is empty. Please ensure a valid response return");
                 }
-
+                break;
+            case "POST":
+                PostRequestHandler postRequestHandler = new PostRequestHandler(apiData.endpoint, headers, params, secret, body);
+                Response postResponse = postRequestHandler.extractResponseContent();
+                ArrayNode arrayNode1 = postRequestHandler.extractJSONArrayData(apiData.node);
+                if(!arrayNode1.isEmpty()) {
+                    apiData.setDataNode(arrayNode1);
+                    System.out.println("arr: " + apiData.dataNode);
+                } else {
+                    Assert.fail("This node from Post response data is empty. Please ensure a valid response return");
+                }
+                break;
+            case "PUT":
+                PutRequestHandler putRequestHandler = new PutRequestHandler(apiData.endpoint, headers, params, secret, body);
+                Response putResponse = putRequestHandler.extractResponseContent();
+                ArrayNode arrayNode2 = putRequestHandler.extractJSONArrayData(apiData.node);
+                if(!arrayNode2.isEmpty()) {
+                    apiData.setDataNode(arrayNode2);
+                    System.out.println("arr: " + apiData.dataNode);
+                } else {
+                    Assert.fail("This node from Put response data is empty. Please ensure a valid response return");
+                }
+                break;
         }
     }
 }
