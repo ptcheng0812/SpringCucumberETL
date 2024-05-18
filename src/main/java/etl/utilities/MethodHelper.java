@@ -166,6 +166,42 @@ public class MethodHelper {
 
         return notMatchedMaps;
     }
+    public static List<Map<String, String>> CompareListsAndReturnNotMatched(List<Map<String, String>> list1, List<Map<String, String>> list2) {
+        List<Map<String, String>> notMatched = new ArrayList<>();
+        // Step 1: Check lengths
+        if (list1.size() != list2.size()) {
+            return list1;
+        }
+
+        // Step 2: Iterate through elements
+        for (int i = 0; i < list1.size(); i++) {
+            Map<String, String> map1 = list1.get(i);
+            Map<String, String> map2 = list2.get(i);
+
+            // Step 3: Compare maps
+            if (!compareMaps(map1, map2)) {
+                notMatched.add(map1);
+            }
+        }
+
+        // If all elements are equal, return true
+        return notMatched;
+    }
+
+    public static boolean compareMaps(Map<String, String> map1, Map<String, String> map2) {
+        // Check if the maps have the same keys
+        if (!map1.keySet().equals(map2.keySet())) {
+            return false;
+        }
+
+        // Check if the values for each key are equal
+        for (String key : map1.keySet()) {
+            if (!map1.get(key).equals(map2.get(key))) {
+                return false;
+            }
+        }
+        return true;
+    }
     public static List<List<String>> removeKeysAndConvert(List<Map<String, String>> list, List<String> keysToRemove) {
         return list.stream()
                 .map(map -> map.entrySet().stream()
