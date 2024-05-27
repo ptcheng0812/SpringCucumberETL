@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 public class WriteXLSXStepDef {
     @Autowired
@@ -52,6 +53,7 @@ public class WriteXLSXStepDef {
                     if (body == null) {
                         body = MethodHelper.findNodeWithValue(singleNode, headers.get(h));
                         if(body != null) {bodyCell.setCellValue(body.asText());}
+                        else {bodyCell.setCellValue("null");}
                     }
                     if(body != null && body.asText() != null && !body.isObject()) {bodyCell.setCellValue(body.asText());}
                     if(body != null && body.isArray()) {
@@ -108,8 +110,8 @@ public class WriteXLSXStepDef {
                     Cell bodyCell = bodyRow.createCell(h);
                     if (body == null) {
                         body = MethodHelper.findNodeWithValue(singleNode, headers.get(h));
-//                        assert body != null;
                         if(body != null && body.asText() != null && !body.isObject()) {bodyCell.setCellValue(body.asText());}
+                        else {bodyCell.setCellValue("null");}
                     }
                     if(body != null && body.asText() != null && !body.isObject()) {bodyCell.setCellValue(body.asText());}
                     if(body != null && body.isArray()) {

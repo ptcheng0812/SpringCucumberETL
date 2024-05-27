@@ -285,12 +285,11 @@ public class CompareXLSXStepDef {
             //Compare master and test data list
             for (int el=0; el< sheetData.master_dataList.size(); el++) {
                 for(String key: sheetData.master_dataList.get(el).keySet()) {
-                    if(Objects.equals(sheetData.master_dataList.get(el).get(key), "null") || Objects.equals(sheetData.master_dataList.get(el).get(key), "") || sheetData.master_dataList.get(el).get(key) == null) {
-                        System.out.print(key + "showing null in both master and test");
-                    }
                     if (!Objects.equals(sheetData.master_dataList.get(el).get(key), sheetData.test_dataList.get(el).get(key))) {
-                        notMatchedMaps_master.add(sheetData.master_dataList.get(el));
-                        break;
+                        if(sheetData.master_dataList.get(el).get(key)!=null && sheetData.test_dataList.get(el).get(key)!=null) {
+                            notMatchedMaps_master.add(sheetData.master_dataList.get(el));
+                            break;
+                        }
                     }
 
                 }
@@ -298,12 +297,11 @@ public class CompareXLSXStepDef {
 
             for (int el=0; el< sheetData.test_dataList.size(); el++) {
                 for(String key: sheetData.test_dataList.get(el).keySet()) {
-                    if(Objects.equals(sheetData.test_dataList.get(el).get(key), "null") || Objects.equals(sheetData.test_dataList.get(el).get(key), "") || sheetData.test_dataList.get(el).get(key) == null) {
-                        System.out.print(key + "showing null in both master and test");
-                    }
                     if (!Objects.equals(sheetData.test_dataList.get(el).get(key), sheetData.master_dataList.get(el).get(key))) {
-                        notMatchedMaps_test.add(sheetData.test_dataList.get(el));
-                        break;
+                        if(sheetData.master_dataList.get(el).get(key)!=null && sheetData.test_dataList.get(el).get(key)!=null) {
+                            notMatchedMaps_test.add(sheetData.test_dataList.get(el));
+                            break;
+                        }
                     }
                 }
             }

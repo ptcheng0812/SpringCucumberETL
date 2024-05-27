@@ -361,8 +361,9 @@ public class MethodHelper {
                 finalValuesSql.append(fieldValue.asText()).append(", ");
             }
             else {
-                assert fieldValue != null;
-                finalValuesSql.append("'").append(fieldValue.asText().replace("'", "''")).append("'").append(", ");
+//                assert fieldValue != null;
+                if(fieldValue != null && fieldValue.asText() != "") { finalValuesSql.append("'").append(fieldValue.asText().replace("'", "''")).append("'").append(", ");}
+                else { finalValuesSql.append("'").append("null").append("'").append(", ");}
             }
         }
 //        node.fields().forEachRemaining(entry -> {
@@ -378,7 +379,6 @@ public class MethodHelper {
         insertSql = new StringBuilder(insertSql.substring(0, insertSql.length() - 2));
         valuesSql = new StringBuilder(valuesSql.substring(0, valuesSql.length() - 2));
         insertSql.append(valuesSql).append(")");
-        System.out.println("insert sql: " + insertSql);
         try (PreparedStatement statement = connection.prepareStatement(insertSql.toString())) {
           statement.executeUpdate();
         }

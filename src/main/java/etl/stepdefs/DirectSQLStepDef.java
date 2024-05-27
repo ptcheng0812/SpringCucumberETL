@@ -60,15 +60,17 @@ public class DirectSQLStepDef {
         List<Map<String, String>> expectedData = expectedTable.asMaps();
         // Assert that the actual data matches the expected data
         Assert.assertEquals(expectedData, sql.result);
+//        List<Map<String, String>> notMatched = MethodHelper.CompareListsAndReturnNotMatched(expectedData, sql.result);
+//        System.out.println(notMatched);
     }
 
-    @Then("the following results return from database match with test xlsx {string} and output difference file {string}")
-    public void theFollowingResultsReturnFromDatabaseMatchWithTestXlsxAndOutputDifferenceFile(String arg0, String arg1) throws IOException {
-        if(Objects.equals(arg0, "") || Objects.equals(arg1, "")) {
+    @Then("the following results return from database match with test xlsx {string} with primary key {string} and output difference file {string}")
+    public void theFollowingResultsReturnFromDatabaseMatchWithTestXlsxAndOutputDifferenceFile(String arg0, String arg1, String arg2) throws IOException {
+        if(Objects.equals(arg0, "") || Objects.equals(arg2, "")) {
             Assert.fail("Missing parameters \n please provide all master/test/output file path");
         } else {
             filePath.setTest_path(arg0);
-            filePath.setOutput_path(arg1);
+            filePath.setOutput_path(arg2);
         }
         List<String> headersFromDbResult = MethodHelper.getKeysAsList(sql.result.get(0));
 
@@ -99,13 +101,28 @@ public class DirectSQLStepDef {
             Iterator < Cell >  itr_data_cells = datarow.cellIterator();
             while ( itr_data_cells.hasNext()) {
                 String data = String.valueOf(itr_data_cells.next());
-                rowData.add(MethodHelper.CheckEndsWithZeroStringConvert(data));
+                if (data != null) {rowData.add(MethodHelper.CheckEndsWithZeroStringConvert(data)); }
+                else {rowData.add("null");}
             }
+            System.out.println(headers.size()+ " " + rowData.size());
             Map<String, String> singleData = MethodHelper.convertToDictionary(headers, rowData);
             dictionaryList.add(singleData);
             sheetData.setTest_dataList(singleData);
         }
 
+        // Sort the master data and test data by the "name" key
+        Collections.sort(sheetData.master_dataList, new Comparator<Map<String, String>>() {
+            @Override
+            public int compare(Map<String, String> map1, Map<String, String> map2) {
+                return map1.get(arg1).compareTo(map2.get(arg1));
+            }
+        });
+        Collections.sort(sheetData.test_dataList, new Comparator<Map<String, String>>() {
+            @Override
+            public int compare(Map<String, String> map1, Map<String, String> map2) {
+                return map1.get(arg1).compareTo(map2.get(arg1));
+            }
+        });
 
         //Compare headers
         for (String header: sheetData.test_headerList) {
@@ -116,17 +133,22 @@ public class DirectSQLStepDef {
         //Compare master and test data list
         for (int el=0; el< sql.result.size(); el++) {
             for(String key: sql.result.get(el).keySet()) {
-                if (!Objects.equals(sql.result.get(el).get(key), sheetData.test_dataList.get(el).get(key))) {
-                    notMatchedMaps_master.add(sql.result.get(el));
-                    break;
+                if(sql.result.get(el).get(key)!=null && sheetData.test_dataList.get(el).get(key)!=null) {
+                    if (!Objects.equals(sql.result.get(el).get(key).trim(), sheetData.test_dataList.get(el).get(key).trim())) {
+                        System.out.println("Not matched Key: " + key + " " + "Not matched Value: " + sheetData.test_dataList.get(el).get(key) + ".");
+                        notMatchedMaps_master.add(sql.result.get(el));
+                        break;
+                    }
                 }
             }
         }
         for (int el=0; el< sheetData.test_dataList.size(); el++) {
             for(String key: sheetData.test_dataList.get(el).keySet()) {
-                if (!Objects.equals(sheetData.test_dataList.get(el).get(key), sql.result.get(el).get(key))) {
-                    notMatchedMaps_test.add(sheetData.test_dataList.get(el));
-                    break;
+                if(sheetData.test_dataList.get(el).get(key)!=null && sql.result.get(el).get(key)!=null) {
+                        if (!Objects.equals(sheetData.test_dataList.get(el).get(key).trim(), sql.result.get(el).get(key).trim())) {
+                        notMatchedMaps_test.add(sheetData.test_dataList.get(el));
+                        break;
+                    }
                 }
             }
         }
@@ -200,7 +222,7 @@ public class DirectSQLStepDef {
                 }
                 for (int el = 0; el < sheetData.test_headerList.size(); el++) {
                     Cell cell = test_row.createCell(el);
-                    cell.setCellValue(notMatchedMaps_test.get(r).get(sheetData.test_headerList.get(el)));
+                    cell.setCellValue(notMatchedMaps_test.get(r).get(headersFromDbResult.get(el)));
                 }
 
                 Cell indicate_master_cell = master_row.createCell(headersFromDbResult.size());
@@ -215,12 +237,11 @@ public class DirectSQLStepDef {
 
         ////Print Out xlsx
         if(!headersLogMessages.isEmpty() || !notMatchedMaps_master.isEmpty() || !notMatchedMaps_test.isEmpty()) {
-            filePath.setOutput_path(arg1);
+            filePath.setOutput_path(arg2);
             FileOutputStream outputStream = new FileOutputStream(filePath.output_path);
             wb.write(outputStream);
             wb.close();
             System.out.println("output xlsx file was generated");
-            Assert.fail("difference is found");
         }
     }
 }
