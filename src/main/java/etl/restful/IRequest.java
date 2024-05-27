@@ -1,11 +1,9 @@
-package etl.api;
+package etl.restful;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.restassured.response.Response;
 
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 public interface IRequest {
     Response extractResponseContent();

@@ -21,7 +21,7 @@ Feature: Compare XLSX to Database
     Then I write node data to database
     When I retrieve data from master table "master_products" in database
     When I retrieve data from test file "src/main/resources/test_db.xlsx"
-    When I compare the master with test and output the difference file "src/main/resources/difference.xlsx"
+    When I compare the master with test with primary key "id" and output the difference file "src/main/resources/difference.xlsx"
 
   Scenario:  Compare XLSX to Database with sheet specified (explicit mode)
     Given I connected to the database
@@ -30,4 +30,4 @@ Feature: Compare XLSX to Database
     Then I write node data to database
     When I retrieve data from master table "master_products" in database
     When I retrieve data from sheet "Result1" in test file "src/main/resources/test_db.xlsx"
-    When I compare the master with test and output the difference file "src/main/resources/difference.xlsx"
+    When I compare the master with test with primary key "id" and output the difference file "src/main/resources/difference.xlsx"

@@ -1,10 +1,11 @@
 package etl.stepdefs;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import etl.api.GetRequestHandler;
-import etl.api.PostRequestHandler;
-import etl.api.PutRequestHandler;
-import etl.api.Secret;
+import etl.graphql.FetchRequestHandler;
+import etl.restful.GetRequestHandler;
+import etl.restful.PostRequestHandler;
+import etl.restful.PutRequestHandler;
+import etl.data.Secret;
 import etl.data.APIData;
 import etl.utilities.MethodHelper;
 import io.cucumber.datatable.DataTable;
@@ -16,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static io.restassured.RestAssured.given;
@@ -48,6 +48,8 @@ public class APIStepDef {
     }
 
     @When("I fetch the restful api endpoint by {string} and extract data from node with the following params")
+    @When("I fetch the restful api endpoint by {string} and extract data from node using the following params")
+    @When("I fetch the restful api endpoint by {string} and extract data from node")
     public void iFetchTheRestfulApiEndpointByAndExtractDataFromNodeWithTheFollowingParams(String arg0, DataTable table) throws ExecutionException, InterruptedException {
         Map<String, String> param_table = table.asMap();
 //        System.out.print(param_table);
@@ -132,5 +134,75 @@ public class APIStepDef {
                 }
                 break;
         }
+    }
+
+    @When("I fetch the graphql api endpoint and extract data from node using the following params")
+    @When("I fetch the graphql api endpoint and extract data from node with the following params")
+    public void iFetchTheGraphqlApiEndpointAndExtractDataFromNodeUsingTheFollowingParams(DataTable table) {
+        Map<String, String> param_table = table.asMap();
+//        System.out.print(param_table);
+
+        // Use the builder to create a Secret object dynamically
+        Secret.SecretBuilder secretBuilder = Secret.builder();
+        Map<String, String> headers = new HashMap<>();
+        Map<String, String> params = new HashMap<>();
+        String query = "";
+        String variable = "";
+
+        for (Map.Entry<String, String> entry : param_table.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+
+            // Check if the key contains "secret_"
+            if (key.startsWith("secret_")) {
+                // Extract the field name after "secret_"
+                String fieldName = key.substring("secret_".length());
+                // Use reflection to set the field value in the builder
+                try {
+                    secretBuilder.getClass().getMethod(fieldName, String.class).invoke(secretBuilder, value);
+                } catch (ReflectiveOperationException e) {
+                    // Handle exception (e.g., method not found)
+                    e.printStackTrace();
+                }
+            }
+
+            // Check if the key contains "header_"
+            if (key.startsWith("header_")) {
+                // Extract the header field name after "header_"
+                String headerFieldName = key.substring("header_".length());
+                // Add the header field and value to the header map
+                headers.put(headerFieldName, value);
+            }
+
+            if (key.startsWith("param_")) {
+                // Extract the header field name after "header_"
+                String headerFieldName = key.substring("param_".length());
+                // Add the header field and value to the header map
+                params.put(headerFieldName, value);
+            }
+
+            if(key.startsWith("query") || key.startsWith("mutation")) {
+                query = value;
+            }
+
+            if(key.startsWith("variables") || key.startsWith("variable")) {
+                variable = value;
+            }
+        }
+        // Build the Secret object
+        Secret secret = secretBuilder.build();
+        String full_query = String.format("{ \"query\": \"%s\", \"variables\": %s }", query.replace("\"", "\\\""), variable);
+        System.out.println(full_query);
+
+        FetchRequestHandler fetchRequestHandler = new FetchRequestHandler(apiData.endpoint, headers, params, secret, full_query);
+        Response postResponse = fetchRequestHandler.extractResponseContent();
+        ArrayNode arrayNode1 = fetchRequestHandler.extractJSONArrayData(apiData.node);
+        if(!arrayNode1.isEmpty()) {
+            apiData.setDataNode(arrayNode1);
+            System.out.println("arr: " + apiData.dataNode);
+        } else {
+            Assert.fail("This node from Post response data is empty. Please ensure a valid response return");
+        }
+
     }
 }

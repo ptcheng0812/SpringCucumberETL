@@ -51,15 +51,14 @@ public class WriteXLSXStepDef {
                     Cell bodyCell = bodyRow.createCell(h);
                     if (body == null) {
                         body = MethodHelper.findNodeWithValue(singleNode, headers.get(h));
-                        assert body != null;
-                        bodyCell.setCellValue(body.asText());
+                        if(body != null) {bodyCell.setCellValue(body.asText());}
                     }
-                    if(body.asText() != null && !body.isObject()) {bodyCell.setCellValue(body.asText());}
-                    if(body.isArray()) {
+                    if(body != null && body.asText() != null && !body.isObject()) {bodyCell.setCellValue(body.asText());}
+                    if(body != null && body.isArray()) {
                         String converted = MethodHelper.ConvertArrayNodeToCommaSeparatedString((ArrayNode) body);
                         bodyCell.setCellValue(converted);
                     }
-                    if(body.isObject()) {
+                    if(body != null && body.isObject()) {
                         if(body.get("").toString() != null) {
                             bodyCell.setCellValue(body.get("").asText());
                         }
@@ -109,15 +108,15 @@ public class WriteXLSXStepDef {
                     Cell bodyCell = bodyRow.createCell(h);
                     if (body == null) {
                         body = MethodHelper.findNodeWithValue(singleNode, headers.get(h));
-                        assert body != null;
-                        bodyCell.setCellValue(body.asText());
+//                        assert body != null;
+                        if(body != null && body.asText() != null && !body.isObject()) {bodyCell.setCellValue(body.asText());}
                     }
-                    if(body.asText() != null && !body.isObject()) {bodyCell.setCellValue(body.asText());}
-                    if(body.isArray()) {
+                    if(body != null && body.asText() != null && !body.isObject()) {bodyCell.setCellValue(body.asText());}
+                    if(body != null && body.isArray()) {
                         String converted = MethodHelper.ConvertArrayNodeToCommaSeparatedString((ArrayNode) body);
                         bodyCell.setCellValue(converted);
                     }
-                    if(body.isObject()) {
+                    if(body != null && body.isObject()) {
                         if(body.get("").toString() != null) {
                             bodyCell.setCellValue(body.get("").asText());
                         }

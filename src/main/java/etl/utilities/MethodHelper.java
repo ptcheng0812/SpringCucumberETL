@@ -30,7 +30,10 @@ public class MethodHelper {
                 JsonNode rootNode = xmlMapper.readTree(response.asPrettyString());
                 if(rootNode.isArray()) {return (ArrayNode) rootNode;}
                 else {
-                    if (!Objects.equals(nodeName, "")) {arrayNode = (ArrayNode) rootNode.findParent(nodeName).get(nodeName);}
+                    if (!Objects.equals(nodeName, "")) {
+                        if(Objects.requireNonNull(findNodeWithValue(rootNode, nodeName)).isArray()) {arrayNode = (ArrayNode) findNodeWithValue(rootNode, nodeName);}
+                        if(Objects.requireNonNull(findNodeWithValue(rootNode, nodeName)).isObject()) { arrayNode.add(findNodeWithValue(rootNode, nodeName));}
+                    }
                     else {return arrayNode.add(rootNode);}
                 }
             } catch (Exception ex) {
@@ -43,7 +46,10 @@ public class MethodHelper {
                 JsonNode rootNode = objectMapper.readTree(response.asPrettyString());
                 if(rootNode.isArray()) {return (ArrayNode) rootNode;}
                 else {
-                    if (!Objects.equals(nodeName, "")) {arrayNode = (ArrayNode) rootNode.findParent(nodeName).get(nodeName);}
+                    if (!Objects.equals(nodeName, "")) {
+                        if(Objects.requireNonNull(findNodeWithValue(rootNode, nodeName)).isArray()) {arrayNode = (ArrayNode) findNodeWithValue(rootNode, nodeName);}
+                        if(Objects.requireNonNull(findNodeWithValue(rootNode, nodeName)).isObject()) { arrayNode.add(findNodeWithValue(rootNode, nodeName));}
+                    }
                     else {return arrayNode.add(rootNode);}
                 }
             } catch (Exception ex) {
@@ -68,13 +74,14 @@ public class MethodHelper {
         while (fieldsIterator.hasNext()) {
             Map.Entry<String, JsonNode> entry = fieldsIterator.next();
             JsonNode fieldNode = entry.getValue();
+            if (entry.getKey().equals(value)) {
+                return fieldNode;
+            }
             if (fieldNode.isObject()) {
                 JsonNode foundNode = findNodeWithValue(fieldNode, value);
                 if (foundNode != null) {
                     return foundNode;
                 }
-            } else if (entry.getKey().equals(value)) {
-                return fieldNode;
             }
         }
         return null;
@@ -196,7 +203,7 @@ public class MethodHelper {
 
         // Check if the values for each key are equal
         for (String key : map1.keySet()) {
-            if (!map1.get(key).equals(map2.get(key))) {
+            if (map1.get(key) != null && map2.get(key) != null && !map1.get(key).equals(map2.get(key))) {
                 return false;
             }
         }
@@ -276,6 +283,7 @@ public class MethodHelper {
     }
 
     /********************Database Helper*************************/
+
     public static String generateCreateTableSql(String tableName, JsonNode node) {
         StringBuilder sql = new StringBuilder("CREATE TABLE " + tableName + " (");
         boolean lastCol = false;
@@ -285,19 +293,27 @@ public class MethodHelper {
             throw new IllegalArgumentException("JSON node is null or empty");
         }
         // Iterate through the fields of the first JSON object to determine the column names and data types
-
         StringBuilder finalSql = sql;
-        node.fields().forEachRemaining(entry -> {
-            String fieldName = entry.getKey();
-            JsonNode fieldValue = entry.getValue();
-            String fieldType = "VARCHAR(400)"; // Adjust data types as needed
-            if(Objects.equals(fieldName, "id") || Objects.equals(fieldName, "num")) {
-                fieldType = "NUMERIC";
-                finalSql.append(fieldName).append(" ").append(fieldType).append(" NOT NULL, ");
+        List<String> keys = new ArrayList<>();
+        JsonNodeExtractKeysRecursive(node, keys, "");
+        for (String key: keys) {
+            if(Objects.equals(key, "id") || Objects.equals(key, "num")) {
+                finalSql.append(key).append(" ").append("NUMERIC").append(" NOT NULL, ");
             } else{
-                finalSql.append(fieldName).append(" ").append(fieldType).append(", ");
+                finalSql.append(key).append(" ").append("VARCHAR(400)").append(", ");
             }
-        });
+        }
+//        node.fields().forEachRemaining(entry -> {
+//            String fieldName = entry.getKey();
+//            JsonNode fieldValue = entry.getValue();
+//            String fieldType = "VARCHAR(400)"; // Adjust data types as needed
+//            if(Objects.equals(fieldName, "id") || Objects.equals(fieldName, "num")) {
+//                fieldType = "NUMERIC";
+//                finalSql.append(fieldName).append(" ").append(fieldType).append(" NOT NULL, ");
+//            } else{
+//                finalSql.append(fieldName).append(" ").append(fieldType).append(", ");
+//            }
+//        });
 
         sql = new StringBuilder(sql.substring(0, sql.length() - 2)); // Remove the last two characters
 
@@ -324,24 +340,45 @@ public class MethodHelper {
         StringBuilder insertSql = new StringBuilder("INSERT INTO " + nodeName + " (");
         StringBuilder valuesSql = new StringBuilder(") VALUES (");
 
+        //Get all keys first
+        List<String> keys = new ArrayList<>();
+        JsonNodeExtractKeysRecursive(node, keys, "");
+
         // Iterate over the fields of the JSON object to dynamically construct the SQL statement
         boolean firstField = true;
         StringBuilder finalInsertSql = insertSql;
         StringBuilder finalValuesSql = valuesSql;
-        node.fields().forEachRemaining(entry -> {
-            String fieldName = entry.getKey();
-            JsonNode fieldValue = entry.getValue();
-            String fieldValueStringtified = fieldValue.asText();
-            finalInsertSql.append(fieldName).append(", ");
-            if(Objects.equals(fieldName, "id")) { finalValuesSql.append(fieldValueStringtified).append(", "); }
-            else if(fieldValue.isArray()) { finalValuesSql.append("'").append(ConvertArrayNodeToCommaSeparatedString((ArrayNode) fieldValue)).append("'").append(", "); }
-            else if(fieldValue.isObject()) { finalValuesSql.append("'").append(fieldValue.get("").asText().replace("'", "''")).append("'").append(", ");}
-            else { finalValuesSql.append("'").append(fieldValueStringtified.replace("'", "''")).append("'").append(", ");}
-        });
+        for (String key: keys) {
+            finalInsertSql.append(key).append(", ");
+            JsonNode fieldValue = findNodeWithValue(node, key);
+            if(fieldValue!= null && fieldValue.isArray()) {
+                finalValuesSql.append("'").append(ConvertArrayNodeToCommaSeparatedString((ArrayNode) fieldValue).replace("'", "''")).append("'").append(", ");
+            }
+            else if(fieldValue!= null && fieldValue.isObject()) {
+                finalValuesSql.append("'").append(fieldValue.get("").asText().replace("'", "''")).append("'").append(", ");
+            }
+            else if(fieldValue!= null && Objects.equals(key, "id")) {
+                finalValuesSql.append(fieldValue.asText()).append(", ");
+            }
+            else {
+                assert fieldValue != null;
+                finalValuesSql.append("'").append(fieldValue.asText().replace("'", "''")).append("'").append(", ");
+            }
+        }
+//        node.fields().forEachRemaining(entry -> {
+//            String fieldName = entry.getKey();
+//            JsonNode fieldValue = entry.getValue();
+//            String fieldValueStringtified = fieldValue.asText();
+//            finalInsertSql.append(fieldName).append(", ");
+//            if(Objects.equals(fieldName, "id")) { finalValuesSql.append(fieldValueStringtified).append(", "); }
+//            else if(fieldValue.isArray()) { finalValuesSql.append("'").append(ConvertArrayNodeToCommaSeparatedString((ArrayNode) fieldValue)).append("'").append(", "); }
+//            else if(fieldValue.isObject()) { finalValuesSql.append("'").append(fieldValue.get("").asText().replace("'", "''")).append("'").append(", ");}
+//            else { finalValuesSql.append("'").append(fieldValueStringtified.replace("'", "''")).append("'").append(", ");}
+//        });
         insertSql = new StringBuilder(insertSql.substring(0, insertSql.length() - 2));
         valuesSql = new StringBuilder(valuesSql.substring(0, valuesSql.length() - 2));
         insertSql.append(valuesSql).append(")");
-
+        System.out.println("insert sql: " + insertSql);
         try (PreparedStatement statement = connection.prepareStatement(insertSql.toString())) {
           statement.executeUpdate();
         }
@@ -351,7 +388,7 @@ public class MethodHelper {
         StringBuilder query = new StringBuilder("SELECT * FROM " + table + " WHERE ");
 
         for (Map.Entry<String, String> entry : singleData.entrySet()) {
-            query.append(entry.getKey()).append(" = ").append("'").append(entry.getValue()).append("'").append(" AND ");
+            query.append(entry.getKey()).append(" = ").append("'").append(entry.getValue().replace("'", "''")).append("'").append(" AND ");
         }
         // Remove the last "AND"
         query.delete(query.length() - 5, query.length());
@@ -380,7 +417,9 @@ public class MethodHelper {
         for (Map.Entry<String, String> entry : singleData.entrySet()) {
             String entryValue = entry.getValue();
             if (entryValue.endsWith(".0")) { entryValue = entryValue.substring(0, entryValue.length() - 2);}
-            query.append(entry.getKey()).append(" = ").append("'").append(entryValue.replace("'", "''")).append("'").append(" AND ");
+            if (!entryValue.isEmpty()) {
+                query.append(entry.getKey()).append(" = ").append("'").append(entryValue.replace("'", "''")).append("'").append(" AND ");
+            }
         }
         // Remove the last "AND"
         query.delete(query.length() - 5, query.length());
@@ -402,7 +441,7 @@ public class MethodHelper {
         List<String> notMatchedKeys = new ArrayList<>();
         for(String key : singleData.keySet()) {
             StringBuilder query = new StringBuilder("SELECT * FROM " + table + " WHERE ");
-            query.append(key).append(" = ").append("'").append(singleData.get(key)).append("'");
+            query.append(key).append(" = ").append("'").append(singleData.get(key).replace("'", "''")).append("'");
 
             try (PreparedStatement statement = connection.prepareStatement(query.toString())) {
                 // Execute the query

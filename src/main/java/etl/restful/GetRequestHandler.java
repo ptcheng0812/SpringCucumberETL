@@ -1,9 +1,9 @@
-package etl.api;
+package etl.restful;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import etl.data.Secret;
 import etl.utilities.MethodHelper;
 import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
@@ -11,21 +11,17 @@ import io.restassured.specification.RequestSpecification;
 import java.util.HashMap;
 import java.util.Map;
 
-import static etl.utilities.MethodHelper.*;
-
-public class PutRequestHandler implements IRequest{
+public class GetRequestHandler implements IRequest {
     private String apiEndpoint;
     private Map<String, String> _header;
     private Map<String, String> _param;
     private Secret _secret;
-    private String _body;
 
-    public PutRequestHandler(String apiEndpoint, Map<String, String> header, Map<String, String> param, Secret secret, String body) {
+    public GetRequestHandler(String apiEndpoint, Map<String, String> header, Map<String, String> param, Secret secret) {
         this.apiEndpoint = apiEndpoint;
         this._header = header;
         this._param = param;
         this._secret = secret;
-        this._body = body;
     }
     @Override
     public Response extractResponseContent() {
@@ -66,24 +62,8 @@ public class PutRequestHandler implements IRequest{
                     throw new IllegalArgumentException("Unsupported authentication method: " + _secret.getTypeOfAuth());
             }
         }
-
-        //Logic for body
-        if (_body != "") {
-            // Determine the content type based on the requestBody
-            ContentType contentType = ContentType.ANY;
-            if (isJson(_body)) {
-                contentType = ContentType.JSON;
-            } else if (isXml(_body)) {
-                contentType = ContentType.XML;
-            } else if (isFilePath(_body)) {
-                contentType = ContentType.ANY; // Content type for multi-part request
-            } else {
-                contentType = ContentType.URLENC; // Default to form URL-encoded
-            }
-            request.contentType(contentType).body(_body);
-        }
-        // Send the PUT request
-        return request.put();
+        // Send the GET request
+        return request.get();
     }
 
     @Override
