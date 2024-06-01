@@ -69,6 +69,40 @@ public class MethodHelper {
         }
         return stringBuilder.toString();
     }
+    public static void flattenJson (JsonNode jsonNode, Map<String, String> flatMap, String prefix) {
+        if (jsonNode.isObject()) {
+            ObjectNode objectNode = (ObjectNode) jsonNode;
+            Iterator<Map.Entry<String, JsonNode>> fields = objectNode.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                flattenJson(field.getValue(), flatMap, prefix + field.getKey() + "_");
+            }
+        } else if (jsonNode.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) jsonNode;
+            for (int i = 0; i < arrayNode.size(); i++) {
+                flattenJson(arrayNode.get(i), flatMap, prefix + i + "_");
+            }
+        } else {
+            flatMap.put(prefix.substring(0, prefix.length() - 1), jsonNode.asText());
+        }
+    }
+    public static int determineIndexElementToHaveMaximumFields(ArrayNode arrayNode) {
+        if (arrayNode.isArray()) {
+            int maxKeys = 0;
+            int maxKeysIndex = -1;
+            for (int i = 0; i < arrayNode.size(); i++) {
+                Map<String, String> flatMap = new TreeMap<>();
+                flattenJson(arrayNode.get(i), flatMap, "");
+                int keyCount = flatMap.size();
+//                System.out.println("Element " + i + " flattened keys: " + keyCount);
+                if (keyCount > maxKeys) {
+                    maxKeys = keyCount;
+                    maxKeysIndex = i;
+                }
+            }
+            return maxKeysIndex;
+        } else { return 0;}
+    }
     public static JsonNode findNodeWithValue(JsonNode node, String value) {
         Iterator<Map.Entry<String, JsonNode>> fieldsIterator = node.fields();
         while (fieldsIterator.hasNext()) {
@@ -284,41 +318,29 @@ public class MethodHelper {
 
     /********************Database Helper*************************/
 
-    public static String generateCreateTableSql(String tableName, JsonNode node) {
+    public static String generateCreateTableSql(String tableName, ArrayNode node) {
         StringBuilder sql = new StringBuilder("CREATE TABLE " + tableName + " (");
         boolean lastCol = false;
-
-        // Check if the JSON node is null or empty
-        if (node == null || node.isNull() || node.isEmpty()) {
-            throw new IllegalArgumentException("JSON node is null or empty");
-        }
-        // Iterate through the fields of the first JSON object to determine the column names and data types
         StringBuilder finalSql = sql;
-        List<String> keys = new ArrayList<>();
-        JsonNodeExtractKeysRecursive(node, keys, "");
-        for (String key: keys) {
+        // Flatten each element in array node and collect all unique keys
+        Set<String> uniqueKeys = new TreeSet<>();
+        for (int i = 0; i < node.size(); i++) {
+            Map<String, String> flat_Map = new TreeMap<>();
+            flattenJson(node.get(i), flat_Map, "");
+            uniqueKeys.addAll(flat_Map.keySet());
+        }
+        System.out.println("uniqueKeys :" + uniqueKeys);
+        // Iterate through the Tree Map to determine the column names and data types
+        for (String key: uniqueKeys) {
             if(Objects.equals(key, "id") || Objects.equals(key, "num")) {
                 finalSql.append(key).append(" ").append("NUMERIC").append(" NOT NULL, ");
             } else{
                 finalSql.append(key).append(" ").append("VARCHAR(400)").append(", ");
             }
         }
-//        node.fields().forEachRemaining(entry -> {
-//            String fieldName = entry.getKey();
-//            JsonNode fieldValue = entry.getValue();
-//            String fieldType = "VARCHAR(400)"; // Adjust data types as needed
-//            if(Objects.equals(fieldName, "id") || Objects.equals(fieldName, "num")) {
-//                fieldType = "NUMERIC";
-//                finalSql.append(fieldName).append(" ").append(fieldType).append(" NOT NULL, ");
-//            } else{
-//                finalSql.append(fieldName).append(" ").append(fieldType).append(", ");
-//            }
-//        });
-
+        // Polish the sql and construct the last part of the create table query
         sql = new StringBuilder(sql.substring(0, sql.length() - 2)); // Remove the last two characters
-
         sql.append(")");
-
         return sql.toString();
     }
 
@@ -339,43 +361,24 @@ public class MethodHelper {
     public static void insertDataToDatabase(Connection connection, JsonNode node, String nodeName) throws SQLException {
         StringBuilder insertSql = new StringBuilder("INSERT INTO " + nodeName + " (");
         StringBuilder valuesSql = new StringBuilder(") VALUES (");
-
+        //Flatten node to a Tree Map
+        Map<String, String> flatMap = new TreeMap<>();
+        MethodHelper.flattenJson(node, flatMap, "");
         //Get all keys first
         List<String> keys = new ArrayList<>();
-        JsonNodeExtractKeysRecursive(node, keys, "");
-
-        // Iterate over the fields of the JSON object to dynamically construct the SQL statement
+        keys = MethodHelper.getKeysAsList(flatMap);
+        // Iterate over the fields of the flatten Tree Map to dynamically construct the SQL statement
         boolean firstField = true;
         StringBuilder finalInsertSql = insertSql;
         StringBuilder finalValuesSql = valuesSql;
         for (String key: keys) {
             finalInsertSql.append(key).append(", ");
-            JsonNode fieldValue = findNodeWithValue(node, key);
-            if(fieldValue!= null && fieldValue.isArray()) {
-                finalValuesSql.append("'").append(ConvertArrayNodeToCommaSeparatedString((ArrayNode) fieldValue).replace("'", "''")).append("'").append(", ");
-            }
-            else if(fieldValue!= null && fieldValue.isObject()) {
-                finalValuesSql.append("'").append(fieldValue.get("").asText().replace("'", "''")).append("'").append(", ");
-            }
-            else if(fieldValue!= null && Objects.equals(key, "id")) {
-                finalValuesSql.append(fieldValue.asText()).append(", ");
-            }
-            else {
-//                assert fieldValue != null;
-                if(fieldValue != null && fieldValue.asText() != "") { finalValuesSql.append("'").append(fieldValue.asText().replace("'", "''")).append("'").append(", ");}
-                else { finalValuesSql.append("'").append("null").append("'").append(", ");}
-            }
+            String value = flatMap.get(key);
+            if(value == null || value == "") {
+                finalValuesSql.append("'").append("null").append("'").append(", ");
+            } else { finalValuesSql.append("'").append(value.replace("'", "''")).append("'").append(", ");}
         }
-//        node.fields().forEachRemaining(entry -> {
-//            String fieldName = entry.getKey();
-//            JsonNode fieldValue = entry.getValue();
-//            String fieldValueStringtified = fieldValue.asText();
-//            finalInsertSql.append(fieldName).append(", ");
-//            if(Objects.equals(fieldName, "id")) { finalValuesSql.append(fieldValueStringtified).append(", "); }
-//            else if(fieldValue.isArray()) { finalValuesSql.append("'").append(ConvertArrayNodeToCommaSeparatedString((ArrayNode) fieldValue)).append("'").append(", "); }
-//            else if(fieldValue.isObject()) { finalValuesSql.append("'").append(fieldValue.get("").asText().replace("'", "''")).append("'").append(", ");}
-//            else { finalValuesSql.append("'").append(fieldValueStringtified.replace("'", "''")).append("'").append(", ");}
-//        });
+        // Polish the query and construct to the insert final query
         insertSql = new StringBuilder(insertSql.substring(0, insertSql.length() - 2));
         valuesSql = new StringBuilder(valuesSql.substring(0, valuesSql.length() - 2));
         insertSql.append(valuesSql).append(")");
@@ -406,7 +409,7 @@ public class MethodHelper {
 
                 }
                 System.out.println();
-            }
+            } else { System.out.println("Tabular data compare to db succeed");}
         }
     }
 
@@ -418,7 +421,9 @@ public class MethodHelper {
             String entryValue = entry.getValue();
             if (entryValue.endsWith(".0")) { entryValue = entryValue.substring(0, entryValue.length() - 2);}
             if (!entryValue.isEmpty()) {
-                query.append(entry.getKey()).append(" = ").append("'").append(entryValue.replace("'", "''")).append("'").append(" AND ");
+                if(!entryValue.equals("null")) {
+                    query.append(entry.getKey()).append(" = ").append("'").append(entryValue.replace("'", "''")).append("'").append(" AND ");
+                }
             }
         }
         // Remove the last "AND"
@@ -466,7 +471,7 @@ public class MethodHelper {
                 System.out.printf(notMatchedKey + " : " + singleData.get(notMatchedKey) + ", ");
             }
             System.out.println();
-        }
+        }  else { System.out.println("Tabular data compare to db succeed");}
 
     }
 

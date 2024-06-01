@@ -56,7 +56,7 @@ public class CompareXLSXToDBStepDef {
             XSSFWorkbook workbook2 = new XSSFWorkbook(inputStream2);
             XSSFSheet spreadsheet2 = workbook2.getSheetAt(0);
 
-            //Compare headers
+            //Get headers from db and xlsx
             List<String> headersLogMessages = new ArrayList<>();
             List<String> headers1 = new ArrayList<>();
             List<String> headers2 = MethodHelper.GetHeaderAndReturnToHeaderList(spreadsheet2);
@@ -73,7 +73,7 @@ public class CompareXLSXToDBStepDef {
 
             //Compare headers
             for (int h=0; h < headers1.size(); h++) {
-                if(!headers1.get(h).equals(headers2.get(h))) {
+                if(!headers1.get(h).equals(headers2.get(h).toLowerCase())) {
                     String headersMessage = headers1.get(h);
                     headersLogMessages.add(headersMessage);
                 }
@@ -96,7 +96,6 @@ public class CompareXLSXToDBStepDef {
 
             for(Map<String, String> singleData: sheetData.test_dataList) {
                 try {
-//                    Class.forName("org.postgresql.Driver");
                     // Establish database connection
                     try (Connection connection = DriverManager.getConnection(url, user, password)) {
                         if(!MethodHelper.queryDataInDatabaseAndReturnMismatched(connection, singleData, arg0)) {
@@ -218,7 +217,7 @@ public class CompareXLSXToDBStepDef {
 
             //Compare headers
             for (int h=0; h < headers1.size(); h++) {
-                if(!headers1.get(h).equals(headers2.get(h))) {
+                if(!headers1.get(h).equals(headers2.get(h).toLowerCase())) {
                     String headersMessage = headers1.get(h);
                     headersLogMessages.add(headersMessage);
                 }

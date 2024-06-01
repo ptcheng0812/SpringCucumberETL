@@ -21,11 +21,11 @@ Feature: Direct SQL Query Validation
     When I fetch the api endpoint and extract data from node
     Then I write node data to database
     When I send the following query to database
-      | SQL                                                     |
-      | SELECT id, title, brand, images FROM master_products mp |
-      | WHERE mp.title IN ('Apple', 'Beef Steak')               |
+      | SQL                                                       |
+      | SELECT id, title, brand, images_0 FROM master_products mp |
+      | WHERE mp.title IN ('Apple', 'Beef Steak')                 |
     Then the following results return from database
-      | id | title      | brand | images                                                                 |
+      | id | title      | brand | images_0                                                               |
       | 16 | Apple      |       | https://cdn.dummyjson.com/products/images/groceries/Apple/1.png        |
       | 17 | Beef Steak |       | https://cdn.dummyjson.com/products/images/groceries/Beef%20Steak/1.png |
 

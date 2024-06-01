@@ -38,7 +38,7 @@ public class WriteDatabaseStepDef {
                 }
 
                 // Generate SQL CREATE TABLE statement
-                String createTableSql = generateCreateTableSql("master_"+apiData.node, arrayNode.get(0));
+                String createTableSql = generateCreateTableSql("master_"+apiData.node, arrayNode);
                 System.out.println(createTableSql);
 
                 // Execute SQL statement to create the table
