@@ -7,6 +7,7 @@ import etl.restful.PostRequestHandler;
 import etl.restful.PutRequestHandler;
 import etl.data.Secret;
 import etl.data.APIData;
+import etl.soap.SOAPRequestHandler;
 import etl.utilities.MethodHelper;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;
@@ -15,6 +16,7 @@ import io.restassured.response.Response;
 import org.junit.Assert;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -140,7 +142,6 @@ public class APIStepDef {
     @When("I fetch the graphql api endpoint and extract data from node with the following params")
     public void iFetchTheGraphqlApiEndpointAndExtractDataFromNodeUsingTheFollowingParams(DataTable table) {
         Map<String, String> param_table = table.asMap();
-//        System.out.print(param_table);
 
         // Use the builder to create a Secret object dynamically
         Secret.SecretBuilder secretBuilder = Secret.builder();
@@ -204,5 +205,66 @@ public class APIStepDef {
             Assert.fail("This node from Post response data is empty. Please ensure a valid response return");
         }
 
+    }
+
+    @When("I fetch the soap api endpoint and extract data from node using the following params")
+    @When("I fetch the soap api endpoint and extract data from node with the following params")
+    public void iFetchTheSoapApiEndpointAndExtractDataFromNodeUsingTheFollowingParams(DataTable table) throws IOException {
+        Map<String, String> param_table = table.asMap();
+
+        Secret.SecretBuilder secretBuilder = Secret.builder();
+        Map<String, String> headers = new HashMap<>();
+        Map<String, String> params = new HashMap<>();
+        String body = "";
+
+        for (Map.Entry<String, String> entry : param_table.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+
+            // Check if the key contains "secret_"
+            if (key.startsWith("secret_")) {
+                // Extract the field name after "secret_"
+                String fieldName = key.substring("secret_".length());
+                // Use reflection to set the field value in the builder
+                try {
+                    secretBuilder.getClass().getMethod(fieldName, String.class).invoke(secretBuilder, value);
+                } catch (ReflectiveOperationException e) {
+                    // Handle exception (e.g., method not found)
+                    e.printStackTrace();
+                }
+            }
+
+            // Check if the key contains "header_"
+            if (key.startsWith("header_")) {
+                // Extract the header field name after "header_"
+                String headerFieldName = key.substring("header_".length());
+                // Add the header field and value to the header map
+                headers.put(headerFieldName, value);
+            }
+
+            if (key.startsWith("param_")) {
+                // Extract the header field name after "header_"
+                String headerFieldName = key.substring("param_".length());
+                // Add the header field and value to the header map
+                params.put(headerFieldName, value);
+            }
+
+            if (key.startsWith("body")) {
+                body = value;
+            }
+
+        }
+        // Build the Secret object
+        Secret secret = secretBuilder.build();
+
+        SOAPRequestHandler soapRequestHandler = new SOAPRequestHandler(apiData.endpoint, headers, params, secret, body);
+        Response postResponse = soapRequestHandler.extractResponseContent();
+        ArrayNode arrayNode1 = soapRequestHandler.extractJSONArrayData(apiData.node);
+        if (!arrayNode1.isEmpty()) {
+            apiData.setDataNode(arrayNode1);
+            System.out.println("arr: " + apiData.dataNode);
+        } else {
+            Assert.fail("This node from Post response data is empty. Please ensure a valid response return");
+        }
     }
 }
