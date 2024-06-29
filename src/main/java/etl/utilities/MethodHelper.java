@@ -14,6 +14,7 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -259,6 +260,39 @@ public class MethodHelper {
         } else {
             // If it doesn't end with ".0", return the original string
             return originalString;
+        }
+    }
+    public static String getKafkaConstantValue(String fullFieldName) throws Exception {
+        String[] parts = fullFieldName.split("\\.");
+        String className = "";
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid format for fullFieldName");
+        }
+        if (fullFieldName.contains("ProducerConfig")) { className = "org.apache.kafka.clients.producer." + parts[0];}
+        if (fullFieldName.contains("ConsumerConfig")) { className = "org.apache.kafka.clients.consumer." + parts[0];}
+
+        String fieldName = parts[1];
+
+        // Get the class object
+        Class<?> clazz = Class.forName(className);
+
+        // Get the field
+        Field field = clazz.getField(fieldName);
+
+        // Get the value of the field
+        return (String) field.get(null);
+    }
+    public static String getKafkaClassName(String classField) throws ClassNotFoundException {
+        if (classField.endsWith(".class.getName()")) {
+            String className = classField.substring(0, classField.indexOf(".class.getName()"));
+            // Get the class object
+            Class<?> clazz = Class.forName("org.apache.kafka.common.serialization." + className);
+            // Get the class name
+            return clazz.getName();
+        }
+        if (!classField.contains(".")) { return classField; }
+        else{
+            throw new IllegalArgumentException("Invalid format for classField");
         }
     }
     public static String printMapInGherkinStyle(Map<String, String> map) {

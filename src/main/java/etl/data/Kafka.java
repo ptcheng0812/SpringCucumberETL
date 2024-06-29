@@ -11,7 +11,7 @@ import static io.cucumber.spring.CucumberTestContext.SCOPE_CUCUMBER_GLUE;
 @Component
 @Scope(SCOPE_CUCUMBER_GLUE)
 public class Kafka {
-    public Map<String, String> props = new HashMap<>();
+    public Map<String, Object> props = new HashMap<>();
 
-    public void setProps(String key, String value) {props.put(key, value);}
+    public void setProps(String key, Object value) {props.put(key, value);}
 }

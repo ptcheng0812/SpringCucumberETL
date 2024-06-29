@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import etl.data.APIData;
 import etl.data.Kafka;
+import etl.utilities.MethodHelper;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -52,17 +53,19 @@ public class KafkaStepDef {
             System.out.print(props_table);
             for (Map.Entry<String, String> entry : props_table.entrySet()) {
                 kafka.setProps(entry.getKey(), entry.getValue());
-                kafka.setProps("bootstrapServers", bootstrapServers);
+//                kafka.setProps("bootstrapServers", bootstrapServers);
             }
-        } else {kafka.setProps("bootstrapServers", bootstrapServers);}
+        }
     }
 
     @When("I produce the string message {string} to topic {string}")
-    public void iSendTheStringMessageToTopic(String arg0, String arg1) {
+    public void iSendTheStringMessageToTopic(String arg0, String arg1) throws Exception {
         Properties props = new Properties();
+        for ( Map.Entry<String, Object> kvp : kafka.props.entrySet()) {
+            System.out.println("key: " + kvp.getKey() + " value: " + kvp.getValue());
+            props.put(MethodHelper.getKafkaConstantValue(kvp.getKey()), MethodHelper.getKafkaClassName(kvp.getValue().toString()));
+        }
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
         Producer<String, String> producer = new KafkaProducer<>(props);
         ProducerRecord<String, String> record = new ProducerRecord<>(arg1, arg0);
@@ -74,13 +77,13 @@ public class KafkaStepDef {
 
 
     @Then("I consume the latest string message on topic {string} and assert with {string}")
-    public void iReceiveTheLatestStringMessageOnTopicAndAssertWith(String arg0, String arg1) {
+    public void iReceiveTheLatestStringMessageOnTopicAndAssertWith(String arg0, String arg1) throws Exception {
         Properties props = new Properties();
+        for ( Map.Entry<String, Object> kvp : kafka.props.entrySet()) {
+            props.put(MethodHelper.getKafkaConstantValue(kvp.getKey()), MethodHelper.getKafkaClassName(kvp.getValue().toString()));
+        }
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "console-consumer-71128");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+
 
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
         TopicPartition partition = new TopicPartition(arg0, 0);
@@ -113,11 +116,13 @@ public class KafkaStepDef {
     }
 
     @When("I produce the json message from file {string} to topic {string}")
-    public void iProduceTheJsonMessageFromFileToTopic(String arg0, String arg1) {
+    public void iProduceTheJsonMessageFromFileToTopic(String arg0, String arg1) throws Exception {
         Properties props = new Properties();
+        for ( Map.Entry<String, Object> kvp : kafka.props.entrySet()) {
+            props.put(MethodHelper.getKafkaConstantValue(kvp.getKey()), MethodHelper.getKafkaClassName(kvp.getValue().toString()));
+        }
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
         Producer<String, String> producer = new KafkaProducer<>(props);
         //Read Json File and Get Json String
         ObjectMapper objectMapper = new ObjectMapper();
@@ -138,13 +143,12 @@ public class KafkaStepDef {
     }
 
     @Then("I consume the latest json message on topic {string} and extract data from node {string}")
-    public void iConsumeTheLatestJsonMessageOnTopicAndExtractDataFromNode(String arg0, String arg1) throws JsonProcessingException {
+    public void iConsumeTheLatestJsonMessageOnTopicAndExtractDataFromNode(String arg0, String arg1) throws Exception {
         Properties props = new Properties();
+        for ( Map.Entry<String, Object> kvp : kafka.props.entrySet()) {
+            props.put(MethodHelper.getKafkaConstantValue(kvp.getKey()), MethodHelper.getKafkaClassName(kvp.getValue().toString()));
+        }
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "console-consumer-71128");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
 
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
         TopicPartition partition = new TopicPartition(arg0, 0);
