@@ -19,5 +19,5 @@ Feature: Kafka Testing
 #      | ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG   | StringDeserializer.class.getName() |
 #      | ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG | StringDeserializer.class.getName() |
 #      | ConsumerConfig.AUTO_OFFSET_RESET_CONFIG        | "latest"                           |
-#    When I produce the json message from file "src/main/resources/kafka_produce.json" to topic "test"
+    When I produce the json message from file "src/main/resources/kafka_produce.json" to topic "test"
     Then I consume the latest json message on topic "test" and extract data from node "products"
