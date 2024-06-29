@@ -30,7 +30,10 @@ public class MethodHelper {
                 JsonNode rootNode = xmlMapper.readTree(response.asPrettyString());
                 if(rootNode.isArray()) {return (ArrayNode) rootNode;}
                 else {
-                    if (!Objects.equals(nodeName, "")) {arrayNode = (ArrayNode) rootNode.findParent(nodeName).get(nodeName);}
+                    if (!Objects.equals(nodeName, "")) {
+                        if(Objects.requireNonNull(findNodeWithValue(rootNode, nodeName)).isArray()) {arrayNode = (ArrayNode) findNodeWithValue(rootNode, nodeName);}
+                        if(Objects.requireNonNull(findNodeWithValue(rootNode, nodeName)).isObject()) { arrayNode.add(findNodeWithValue(rootNode, nodeName));}
+                    }
                     else {return arrayNode.add(rootNode);}
                 }
             } catch (Exception ex) {
@@ -43,7 +46,10 @@ public class MethodHelper {
                 JsonNode rootNode = objectMapper.readTree(response.asPrettyString());
                 if(rootNode.isArray()) {return (ArrayNode) rootNode;}
                 else {
-                    if (!Objects.equals(nodeName, "")) {arrayNode = (ArrayNode) rootNode.findParent(nodeName).get(nodeName);}
+                    if (!Objects.equals(nodeName, "")) {
+                        if(Objects.requireNonNull(findNodeWithValue(rootNode, nodeName)).isArray()) {arrayNode = (ArrayNode) findNodeWithValue(rootNode, nodeName);}
+                        if(Objects.requireNonNull(findNodeWithValue(rootNode, nodeName)).isObject()) { arrayNode.add(findNodeWithValue(rootNode, nodeName));}
+                    }
                     else {return arrayNode.add(rootNode);}
                 }
             } catch (Exception ex) {
@@ -63,18 +69,53 @@ public class MethodHelper {
         }
         return stringBuilder.toString();
     }
+    public static void flattenJson (JsonNode jsonNode, Map<String, String> flatMap, String prefix) {
+        if (jsonNode.isObject()) {
+            ObjectNode objectNode = (ObjectNode) jsonNode;
+            Iterator<Map.Entry<String, JsonNode>> fields = objectNode.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                flattenJson(field.getValue(), flatMap, prefix + field.getKey() + "_");
+            }
+        } else if (jsonNode.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) jsonNode;
+            for (int i = 0; i < arrayNode.size(); i++) {
+                flattenJson(arrayNode.get(i), flatMap, prefix + i + "_");
+            }
+        } else {
+            flatMap.put(prefix.substring(0, prefix.length() - 1), jsonNode.asText());
+        }
+    }
+    public static int determineIndexElementToHaveMaximumFields(ArrayNode arrayNode) {
+        if (arrayNode.isArray()) {
+            int maxKeys = 0;
+            int maxKeysIndex = -1;
+            for (int i = 0; i < arrayNode.size(); i++) {
+                Map<String, String> flatMap = new TreeMap<>();
+                flattenJson(arrayNode.get(i), flatMap, "");
+                int keyCount = flatMap.size();
+//                System.out.println("Element " + i + " flattened keys: " + keyCount);
+                if (keyCount > maxKeys) {
+                    maxKeys = keyCount;
+                    maxKeysIndex = i;
+                }
+            }
+            return maxKeysIndex;
+        } else { return 0;}
+    }
     public static JsonNode findNodeWithValue(JsonNode node, String value) {
         Iterator<Map.Entry<String, JsonNode>> fieldsIterator = node.fields();
         while (fieldsIterator.hasNext()) {
             Map.Entry<String, JsonNode> entry = fieldsIterator.next();
             JsonNode fieldNode = entry.getValue();
+            if (entry.getKey().equals(value)) {
+                return fieldNode;
+            }
             if (fieldNode.isObject()) {
                 JsonNode foundNode = findNodeWithValue(fieldNode, value);
                 if (foundNode != null) {
                     return foundNode;
                 }
-            } else if (entry.getKey().equals(value)) {
-                return fieldNode;
             }
         }
         return null;
@@ -196,7 +237,7 @@ public class MethodHelper {
 
         // Check if the values for each key are equal
         for (String key : map1.keySet()) {
-            if (!map1.get(key).equals(map2.get(key))) {
+            if (map1.get(key) != null && map2.get(key) != null && !map1.get(key).equals(map2.get(key))) {
                 return false;
             }
         }
@@ -276,33 +317,30 @@ public class MethodHelper {
     }
 
     /********************Database Helper*************************/
-    public static String generateCreateTableSql(String tableName, JsonNode node) {
+
+    public static String generateCreateTableSql(String tableName, ArrayNode node) {
         StringBuilder sql = new StringBuilder("CREATE TABLE " + tableName + " (");
         boolean lastCol = false;
-
-        // Check if the JSON node is null or empty
-        if (node == null || node.isNull() || node.isEmpty()) {
-            throw new IllegalArgumentException("JSON node is null or empty");
-        }
-        // Iterate through the fields of the first JSON object to determine the column names and data types
-
         StringBuilder finalSql = sql;
-        node.fields().forEachRemaining(entry -> {
-            String fieldName = entry.getKey();
-            JsonNode fieldValue = entry.getValue();
-            String fieldType = "VARCHAR(400)"; // Adjust data types as needed
-            if(Objects.equals(fieldName, "id") || Objects.equals(fieldName, "num")) {
-                fieldType = "NUMERIC";
-                finalSql.append(fieldName).append(" ").append(fieldType).append(" NOT NULL, ");
+        // Flatten each element in array node and collect all unique keys
+        Set<String> uniqueKeys = new TreeSet<>();
+        for (int i = 0; i < node.size(); i++) {
+            Map<String, String> flat_Map = new TreeMap<>();
+            flattenJson(node.get(i), flat_Map, "");
+            uniqueKeys.addAll(flat_Map.keySet());
+        }
+        System.out.println("uniqueKeys :" + uniqueKeys);
+        // Iterate through the Tree Map to determine the column names and data types
+        for (String key: uniqueKeys) {
+            if(Objects.equals(key, "id") || Objects.equals(key, "num")) {
+                finalSql.append(key).append(" ").append("NUMERIC").append(" NOT NULL, ");
             } else{
-                finalSql.append(fieldName).append(" ").append(fieldType).append(", ");
+                finalSql.append(key).append(" ").append("VARCHAR(400)").append(", ");
             }
-        });
-
+        }
+        // Polish the sql and construct the last part of the create table query
         sql = new StringBuilder(sql.substring(0, sql.length() - 2)); // Remove the last two characters
-
         sql.append(")");
-
         return sql.toString();
     }
 
@@ -323,25 +361,27 @@ public class MethodHelper {
     public static void insertDataToDatabase(Connection connection, JsonNode node, String nodeName) throws SQLException {
         StringBuilder insertSql = new StringBuilder("INSERT INTO " + nodeName + " (");
         StringBuilder valuesSql = new StringBuilder(") VALUES (");
-
-        // Iterate over the fields of the JSON object to dynamically construct the SQL statement
+        //Flatten node to a Tree Map
+        Map<String, String> flatMap = new TreeMap<>();
+        MethodHelper.flattenJson(node, flatMap, "");
+        //Get all keys first
+        List<String> keys = new ArrayList<>();
+        keys = MethodHelper.getKeysAsList(flatMap);
+        // Iterate over the fields of the flatten Tree Map to dynamically construct the SQL statement
         boolean firstField = true;
         StringBuilder finalInsertSql = insertSql;
         StringBuilder finalValuesSql = valuesSql;
-        node.fields().forEachRemaining(entry -> {
-            String fieldName = entry.getKey();
-            JsonNode fieldValue = entry.getValue();
-            String fieldValueStringtified = fieldValue.asText();
-            finalInsertSql.append(fieldName).append(", ");
-            if(Objects.equals(fieldName, "id")) { finalValuesSql.append(fieldValueStringtified).append(", "); }
-            else if(fieldValue.isArray()) { finalValuesSql.append("'").append(ConvertArrayNodeToCommaSeparatedString((ArrayNode) fieldValue)).append("'").append(", "); }
-            else if(fieldValue.isObject()) { finalValuesSql.append("'").append(fieldValue.get("").asText().replace("'", "''")).append("'").append(", ");}
-            else { finalValuesSql.append("'").append(fieldValueStringtified.replace("'", "''")).append("'").append(", ");}
-        });
+        for (String key: keys) {
+            finalInsertSql.append(key).append(", ");
+            String value = flatMap.get(key);
+            if(value == null || value == "") {
+                finalValuesSql.append("'").append("null").append("'").append(", ");
+            } else { finalValuesSql.append("'").append(value.replace("'", "''")).append("'").append(", ");}
+        }
+        // Polish the query and construct to the insert final query
         insertSql = new StringBuilder(insertSql.substring(0, insertSql.length() - 2));
         valuesSql = new StringBuilder(valuesSql.substring(0, valuesSql.length() - 2));
         insertSql.append(valuesSql).append(")");
-
         try (PreparedStatement statement = connection.prepareStatement(insertSql.toString())) {
           statement.executeUpdate();
         }
@@ -351,7 +391,7 @@ public class MethodHelper {
         StringBuilder query = new StringBuilder("SELECT * FROM " + table + " WHERE ");
 
         for (Map.Entry<String, String> entry : singleData.entrySet()) {
-            query.append(entry.getKey()).append(" = ").append("'").append(entry.getValue()).append("'").append(" AND ");
+            query.append(entry.getKey()).append(" = ").append("'").append(entry.getValue().replace("'", "''")).append("'").append(" AND ");
         }
         // Remove the last "AND"
         query.delete(query.length() - 5, query.length());
@@ -369,7 +409,7 @@ public class MethodHelper {
 
                 }
                 System.out.println();
-            }
+            } else { System.out.println("Tabular data compare to db succeed");}
         }
     }
 
@@ -380,7 +420,11 @@ public class MethodHelper {
         for (Map.Entry<String, String> entry : singleData.entrySet()) {
             String entryValue = entry.getValue();
             if (entryValue.endsWith(".0")) { entryValue = entryValue.substring(0, entryValue.length() - 2);}
-            query.append(entry.getKey()).append(" = ").append("'").append(entryValue.replace("'", "''")).append("'").append(" AND ");
+            if (!entryValue.isEmpty()) {
+                if(!entryValue.equals("null")) {
+                    query.append(entry.getKey()).append(" = ").append("'").append(entryValue.replace("'", "''")).append("'").append(" AND ");
+                }
+            }
         }
         // Remove the last "AND"
         query.delete(query.length() - 5, query.length());
@@ -402,7 +446,7 @@ public class MethodHelper {
         List<String> notMatchedKeys = new ArrayList<>();
         for(String key : singleData.keySet()) {
             StringBuilder query = new StringBuilder("SELECT * FROM " + table + " WHERE ");
-            query.append(key).append(" = ").append("'").append(singleData.get(key)).append("'");
+            query.append(key).append(" = ").append("'").append(singleData.get(key).replace("'", "''")).append("'");
 
             try (PreparedStatement statement = connection.prepareStatement(query.toString())) {
                 // Execute the query
@@ -427,7 +471,7 @@ public class MethodHelper {
                 System.out.printf(notMatchedKey + " : " + singleData.get(notMatchedKey) + ", ");
             }
             System.out.println();
-        }
+        }  else { System.out.println("Tabular data compare to db succeed");}
 
     }
 

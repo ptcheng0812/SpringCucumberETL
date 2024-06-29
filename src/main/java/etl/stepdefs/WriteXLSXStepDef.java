@@ -15,9 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 public class WriteXLSXStepDef {
     @Autowired
@@ -27,47 +25,41 @@ public class WriteXLSXStepDef {
     public void iWriteNodeDataToXlsxFile(String arg0) throws IOException {
         if(!arg0.isEmpty()) {
             ArrayNode arrayNode = apiData.dataNode;
-            List<String> headers = new ArrayList<>();
-            // Get the array of keys
-            JsonNode singleNodeH = arrayNode.get(0);
-            MethodHelper.JsonNodeExtractKeysRecursive(singleNodeH, headers, "");
-            System.out.println("headers" + headers);
-
+            List<Map<String, String>> dataList_converted = new ArrayList<>();
+            //Convert Array Json to List<Map<String, String>>
+            for (int r=0; r < arrayNode.size(); r++) {
+                Map<String, String> flatMap = new TreeMap<>();
+                MethodHelper.flattenJson(arrayNode.get(r), flatMap, "");
+                dataList_converted.add(flatMap) ;
+            }
+            // Flatten each element in array node and collect all unique keys
+            Set<String> uniqueKeys = new TreeSet<>();
+            for (int i = 0; i < arrayNode.size(); i++) {
+                Map<String, String> flat_Map = new TreeMap<>();
+                MethodHelper.flattenJson(arrayNode.get(i), flat_Map, "");
+                uniqueKeys.addAll(flat_Map.keySet());
+            }
+            List<String> uniqueKeysList = new ArrayList<>(uniqueKeys);
+            System.out.println("uniqueKeys :" + uniqueKeysList);
             //Write headers in xlsx
             XSSFWorkbook workbook = new XSSFWorkbook();
             XSSFSheet sheet = workbook.createSheet("Result1");
             Row row_zero = sheet.createRow(0);
             int colNum = 0;
-            for (String header : headers) {
+            for (String header : uniqueKeysList) {
                 Cell cell = row_zero.createCell(colNum++);
                 cell.setCellValue(header);
             }
             // Write cell based on body
-            for (int r=0; r < arrayNode.size(); r++) {
+            for (int r=0; r < dataList_converted.size(); r++) {
                 Row bodyRow = sheet.createRow(r+1);
-                JsonNode singleNode = arrayNode.get(r);
-                for (int h = 0; h < headers.size(); h++) {
-                    JsonNode body = singleNode.get(headers.get(h));
+                Map<String, String> single_map = dataList_converted.get(r);
+                for (int h = 0; h < uniqueKeysList.size(); h++) {
+                    String value = single_map.get(uniqueKeysList.get(h));
                     Cell bodyCell = bodyRow.createCell(h);
-                    if (body == null) {
-                        body = MethodHelper.findNodeWithValue(singleNode, headers.get(h));
-                        assert body != null;
-                        bodyCell.setCellValue(body.asText());
-                    }
-                    if(body.asText() != null && !body.isObject()) {bodyCell.setCellValue(body.asText());}
-                    if(body.isArray()) {
-                        String converted = MethodHelper.ConvertArrayNodeToCommaSeparatedString((ArrayNode) body);
-                        bodyCell.setCellValue(converted);
-                    }
-                    if(body.isObject()) {
-                        if(body.get("").toString() != null) {
-                            bodyCell.setCellValue(body.get("").asText());
-                        }
-                        else {
-                            String converted = MethodHelper.convertNodeToString(body);
-                            bodyCell.setCellValue(converted);
-                        }
-                    }
+                    if (value == null || value == "") {
+                        bodyCell.setCellValue("null");
+                    } else { bodyCell.setCellValue(value); }
                 }
             }
             //Print Out xlsx
@@ -85,47 +77,41 @@ public class WriteXLSXStepDef {
     public void iWriteNodeDataToSheetInXlsxFile(String arg0, String arg1) throws IOException {
         if(!arg0.isEmpty() && !arg1.isEmpty()) {
             ArrayNode arrayNode = apiData.dataNode;
-            List<String> headers = new ArrayList<>();
-            // Get the array of keys
-            JsonNode singleNodeH = arrayNode.get(0);
-            MethodHelper.JsonNodeExtractKeysRecursive(singleNodeH, headers, "");
-            System.out.println("headers" + headers);
-
+            List<Map<String, String>> dataList_converted = new ArrayList<>();
+            //Convert Array Json to List<Map<String, String>>
+            for (int r=0; r < arrayNode.size(); r++) {
+                Map<String, String> flatMap = new TreeMap<>();
+                MethodHelper.flattenJson(arrayNode.get(r), flatMap, "");
+                dataList_converted.add(flatMap) ;
+            }
+            // Flatten each element in array node and collect all unique keys
+            Set<String> uniqueKeys = new TreeSet<>();
+            for (int i = 0; i < arrayNode.size(); i++) {
+                Map<String, String> flat_Map = new TreeMap<>();
+                MethodHelper.flattenJson(arrayNode.get(i), flat_Map, "");
+                uniqueKeys.addAll(flat_Map.keySet());
+            }
+            List<String> uniqueKeysList = new ArrayList<>(uniqueKeys);
+            System.out.println("uniqueKeys :" + uniqueKeysList);
             //Write headers in xlsx
             XSSFWorkbook workbook = new XSSFWorkbook();
             XSSFSheet sheet = workbook.createSheet(arg0);
             Row row_zero = sheet.createRow(0);
             int colNum = 0;
-            for (String header : headers) {
+            for (String header : uniqueKeysList) {
                 Cell cell = row_zero.createCell(colNum++);
                 cell.setCellValue(header);
             }
             // Write cell based on body
-            for (int r=0; r < arrayNode.size(); r++) {
+            for (int r=0; r < dataList_converted.size(); r++) {
                 Row bodyRow = sheet.createRow(r+1);
-                JsonNode singleNode = arrayNode.get(r);
-                for (int h = 0; h < headers.size(); h++) {
-                    JsonNode body = singleNode.get(headers.get(h));
+                Map<String, String> single_map = dataList_converted.get(r);
+                for (int h = 0; h < uniqueKeysList.size(); h++) {
+                    String value = single_map.get(uniqueKeysList.get(h));
                     Cell bodyCell = bodyRow.createCell(h);
-                    if (body == null) {
-                        body = MethodHelper.findNodeWithValue(singleNode, headers.get(h));
-                        assert body != null;
-                        bodyCell.setCellValue(body.asText());
-                    }
-                    if(body.asText() != null && !body.isObject()) {bodyCell.setCellValue(body.asText());}
-                    if(body.isArray()) {
-                        String converted = MethodHelper.ConvertArrayNodeToCommaSeparatedString((ArrayNode) body);
-                        bodyCell.setCellValue(converted);
-                    }
-                    if(body.isObject()) {
-                        if(body.get("").toString() != null) {
-                            bodyCell.setCellValue(body.get("").asText());
-                        }
-                        else {
-                            String converted = MethodHelper.convertNodeToString(body);
-                            bodyCell.setCellValue(converted);
-                        }
-                    }
+                    if (value == null || value == "") {
+                        bodyCell.setCellValue("null");
+                    } else { bodyCell.setCellValue(value); }
                 }
             }
             //Print Out xlsx

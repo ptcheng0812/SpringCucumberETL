@@ -16,10 +16,7 @@ import org.junit.Assert;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class CompareXLSXStepDef {
     @Autowired
@@ -252,8 +249,8 @@ public class CompareXLSXStepDef {
         }
     }
 
-    @When("I compare the master with test and output the difference file {string}")
-    public void iCompareTheMasterWithTestAndOutputTheDifference(String arg0) throws IOException {
+    @When("I compare the master with test with primary key {string} and output the difference file {string}")
+    public void iCompareTheMasterWithTestAndOutputTheDifference(String arg0, String arg1) throws IOException {
         List<Map<String, String>> notMatchedMaps_master = new ArrayList<>();
         List<Map<String, String>> notMatchedMaps_test = new ArrayList<>();
         List<String> headersLogMessages = new ArrayList<>();
@@ -261,6 +258,20 @@ public class CompareXLSXStepDef {
         List<String> keysToRemove_test = new ArrayList<>(sheetData.master_dataList.get(0).keySet());
         List<List<String>> withoutfields_master_dataList = MethodHelper.removeKeysAndConvert(sheetData.master_dataList, keysToRemove_master);
         List<List<String>> withoutfields_test_dataList = MethodHelper.removeKeysAndConvert(sheetData.test_dataList, keysToRemove_test);
+
+        // Sort the master data and test data by the "name" key
+        Collections.sort(sheetData.master_dataList, new Comparator<Map<String, String>>() {
+            @Override
+            public int compare(Map<String, String> map1, Map<String, String> map2) {
+                return map1.get(arg0).compareTo(map2.get(arg0));
+            }
+        });
+        Collections.sort(sheetData.test_dataList, new Comparator<Map<String, String>>() {
+            @Override
+            public int compare(Map<String, String> map1, Map<String, String> map2) {
+                return map1.get(arg0).compareTo(map2.get(arg0));
+            }
+        });
 
         try {
             //Compare headers
@@ -275,17 +286,22 @@ public class CompareXLSXStepDef {
             for (int el=0; el< sheetData.master_dataList.size(); el++) {
                 for(String key: sheetData.master_dataList.get(el).keySet()) {
                     if (!Objects.equals(sheetData.master_dataList.get(el).get(key), sheetData.test_dataList.get(el).get(key))) {
-                        notMatchedMaps_master.add(sheetData.master_dataList.get(el));
-                        break;
+                        if(sheetData.master_dataList.get(el).get(key)!=null && sheetData.test_dataList.get(el).get(key)!=null) {
+                            notMatchedMaps_master.add(sheetData.master_dataList.get(el));
+                            break;
+                        }
                     }
+
                 }
             }
 
             for (int el=0; el< sheetData.test_dataList.size(); el++) {
                 for(String key: sheetData.test_dataList.get(el).keySet()) {
                     if (!Objects.equals(sheetData.test_dataList.get(el).get(key), sheetData.master_dataList.get(el).get(key))) {
-                        notMatchedMaps_test.add(sheetData.test_dataList.get(el));
-                        break;
+                        if(sheetData.master_dataList.get(el).get(key)!=null && sheetData.test_dataList.get(el).get(key)!=null) {
+                            notMatchedMaps_test.add(sheetData.test_dataList.get(el));
+                            break;
+                        }
                     }
                 }
             }
@@ -374,7 +390,7 @@ public class CompareXLSXStepDef {
 
         ////Print Out xlsx
         if(!headersLogMessages.isEmpty() || !notMatchedMaps_master.isEmpty() || !notMatchedMaps_test.isEmpty()) {
-            filePath.setOutput_path(arg0);
+            filePath.setOutput_path(arg1);
             FileOutputStream outputStream = new FileOutputStream(filePath.output_path);
             wb.write(outputStream);
             wb.close();

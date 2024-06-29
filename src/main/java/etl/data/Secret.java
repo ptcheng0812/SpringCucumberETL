@@ -1,4 +1,4 @@
-package etl.api;
+package etl.data;
 
 public class Secret {
     private String typeOfAuth;

@@ -10,9 +10,9 @@ Feature: Compare Master and Test tables in Database
       | DROP TABLE IF EXISTS test_products;                                       |
       | CREATE TABLE "public"."test_products" AS TABLE "public"."master_products" |
     When I compare master and test in database with the following query
-      | SQL                                                          |
-      | SELECT * FROM {compare}_products                             |
-      | WHERE title IN ('Infinix INBOOK', 'HP Pavilion 15-DK1056WM') |
+      | SQL                                   |
+      | SELECT * FROM {compare}_products      |
+      | WHERE title IN ('Ice Cream', 'Juice') |
 
   Scenario: Compare Master and Test tables in Database with all data
     Given I connected to the database
