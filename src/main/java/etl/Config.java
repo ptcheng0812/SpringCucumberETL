@@ -40,4 +40,8 @@ public class Config {
     @Scope(SCOPE_CUCUMBER_GLUE)
     public SQL getSQL() {return new SQL();}
 
+    @Bean
+    @Scope(SCOPE_CUCUMBER_GLUE)
+    public Kafka getKafka() {return new Kafka();}
+
 }
