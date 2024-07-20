@@ -9,15 +9,20 @@ import etl.data.Secret;
 import etl.data.APIData;
 import etl.soap.SOAPRequestHandler;
 import etl.utilities.MethodHelper;
+import etl.websocket.WebSocketHandler;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.restassured.response.Response;
+import org.java_websocket.client.WebSocketClient;
 import org.junit.Assert;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -26,6 +31,8 @@ import static io.restassured.RestAssured.given;
 public class APIStepDef {
     @Autowired
     APIData apiData;
+
+    WebSocketHandler webSocketHandler;
 
     @Given("the API endpoint is {string} and node is {string}")
     public void theAPIEndpointIsAndNodeIs(String arg0, String arg1) {
@@ -266,5 +273,23 @@ public class APIStepDef {
         } else {
             Assert.fail("This node from Post response data is empty. Please ensure a valid response return");
         }
+    }
+
+    @Given("I connected to the WebSocket Server by endpoint {string}")
+    public void iConnectedToTheWebSocketServerByEndpoint(String arg0) throws URISyntaxException, InterruptedException {
+        WebSocketHandler webSocketHandler = new WebSocketHandler(arg0);
+        webSocketHandler.connectedToWebSocketServer();
+        this.webSocketHandler = webSocketHandler;
+    }
+
+    @When("I send a message {string} to the WebSocket Server")
+    public void iSendAMessageToTheWebSocketServer(String arg0) throws InterruptedException {
+        webSocketHandler.sendMessageToServer(arg0);
+    }
+
+    @Then("I receive a message from the WebSocket Server")
+    public void iReceiveAMessageFromTheWebSocketServer() throws ExecutionException, InterruptedException {
+        List<String> receivedMessages = webSocketHandler.receieveFromService();
+        System.out.println(receivedMessages);
     }
 }
